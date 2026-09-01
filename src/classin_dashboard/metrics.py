@@ -132,11 +132,12 @@ def students_summary(store: EventStore, days: int = 90) -> list[dict[str, Any]]:
     for uid, srows in per_student.items():
         m = student_metrics(srows)
         student = names.get(uid, {})
+        course_names = sorted({r["course_name"] for r in srows if r.get("course_name")})
         out.append(
             {
                 "uid": uid,
                 "name": student.get("name") or f"UID {uid}",
-                "class_name": srows[0].get("class_name") if srows else None,
+                "class_name": ", ".join(course_names) or None,
                 **m,
             }
         )
