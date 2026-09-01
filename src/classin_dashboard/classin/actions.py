@@ -11,9 +11,11 @@ from typing import Any
 
 from .client import ALREADY_MEMBER, ALREADY_REGISTERED, ClassInClient
 
-# LMS activityType values: 2 = homework(숙제), 3 = test, 7 = answer sheet(OMR)
+# LMS activityType values: 2 = homework(숙제), 3 = test, 6 = discussion(토론),
+# 7 = answer sheet(OMR)
 ACTIVITY_HOMEWORK = 2
 ACTIVITY_TEST = 3
+ACTIVITY_DISCUSSION = 6
 ACTIVITY_ANSWER_SHEET = 7
 
 

@@ -15,7 +15,9 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
 from .. import metrics
+from ..classin.actions import ClassInActions
 from ..intelligence.notify_copy import compose_ai_messages, compose_template_messages
+from ..notify.classin_reminder import post_app_reminders
 from ..notify.dispatcher import OutgoingMessage, dispatch
 from .app import AppState, get_state, require_session, render
 
@@ -95,7 +97,12 @@ def notify_compose(
     return render(
         request,
         "notify_preview.html",
-        {"preview": preview, "window_hours": window_hours, "error": error},
+        {
+            "preview": preview,
+            "window_hours": window_hours,
+            "error": error,
+            "app_reminder_enabled": state.settings.classin_app_reminder,
+        },
         session=session,
         nav="notify",
     )
@@ -117,5 +124,21 @@ async def notify_send(request: Request, state: AppState = Depends(get_state)):
         if text:
             messages.append(OutgoingMessage(student_uid=uid, student_name=name, message=text))
     result = dispatch(state.events, messages, dry_run=True)
+
+    query = f"sent={result['sent']}"
+    # Experimental flag-gated path: also post one reminder discussion per
+    # course into ClassIn (ADR-0004; push behavior unverified).
+    if state.settings.classin_app_reminder and form.get("post_to_classin"):
+        window_hours = int(str(form.get("window_hours", "48")) or 48)
+        target_uids = {m.student_uid for m in messages}
+        rows = [
+            r
+            for r in metrics.missing_homework_rows(state.events, window_hours=window_hours)
+            if r["student_uid"] in target_uids
+        ]
+        with state.client_for(session) as client:
+            app_result = post_app_reminders(ClassInActions(client), state.events, rows)
+        query += f"&posted={len(app_result['posted'])}&post_errors={len(app_result['errors'])}"
+
     url = str(request.url_for("notify_home"))
-    return RedirectResponse(f"{url}?sent={result['sent']}", status_code=303)
+    return RedirectResponse(f"{url}?{query}", status_code=303)

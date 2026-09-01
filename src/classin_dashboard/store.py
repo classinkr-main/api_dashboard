@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS courses (
     teacher_uid INTEGER,
     teacher_name TEXT,
     created_via TEXT,            -- api | webhook
-    created_at TEXT
+    created_at TEXT,
+    reminder_unit_id INTEGER     -- LMS unit reused for app-reminder discussions
 );
 CREATE TABLE IF NOT EXISTS lessons (
     lesson_id TEXT PRIMARY KEY,  -- ClassIn classId as text
@@ -124,6 +125,15 @@ class EventStore:
         self._lock = threading.Lock()
         with self._conn() as conn:
             conn.executescript(_SCHEMA)
+            self._migrate(conn)
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        """Additive column migrations for pre-existing databases."""
+        try:
+            conn.execute("ALTER TABLE courses ADD COLUMN reminder_unit_id INTEGER")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
     def _conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -303,6 +313,20 @@ class EventStore:
                 dict(r)
                 for r in conn.execute("SELECT * FROM courses ORDER BY created_at DESC").fetchall()
             ]
+
+    def set_course_reminder_unit(self, course_id: int, unit_id: int) -> None:
+        with self._lock, self._conn() as conn:
+            conn.execute(
+                "UPDATE courses SET reminder_unit_id = ? WHERE course_id = ?",
+                (unit_id, course_id),
+            )
+
+    def course_reminder_unit(self, course_id: int) -> int | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT reminder_unit_id FROM courses WHERE course_id = ?", (course_id,)
+            ).fetchone()
+        return row["reminder_unit_id"] if row and row["reminder_unit_id"] else None
 
     def upsert_lesson(
         self,
