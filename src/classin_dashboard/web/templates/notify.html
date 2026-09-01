@@ -5,12 +5,6 @@
 {% if request.query_params.get('sent') %}
 <div class="notice ok">{{ request.query_params.get('sent') }}건의 문구를 기록했습니다. 아래 발송 이력에서 복사해 사용하세요.</div>
 {% endif %}
-{% if request.query_params.get('posted') %}
-<div class="notice ok">ClassIn 앱에 리마인드 토론 {{ request.query_params.get('posted') }}건을 게시했습니다.</div>
-{% endif %}
-{% if request.query_params.get('post_errors') not in (none, '0') %}
-<div class="notice error">ClassIn 게시 실패 {{ request.query_params.get('post_errors') }}건 — 서버 로그를 확인하세요.</div>
-{% endif %}
 <div class="notice info">
   ClassIn API에는 원격 메시지 발송 기능이 없어(확인됨), 문구를 생성·기록한 뒤 복사해
   카톡/문자로 보내는 방식입니다. 알림톡(알리고/솔라피) 연동 시 자동 발송으로 전환됩니다.

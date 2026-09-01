@@ -34,11 +34,6 @@ class Settings(BaseSettings):
     classin_base_url: str = "https://api.eeo.cn"
     webhook_safekey: str = ""
 
-    # Experimental: post homework reminders into ClassIn as released discussion
-    # activities (activityType=6). OFF by default — in-app push behavior is
-    # undocumented; verify on one real course before enabling (ADR-0004).
-    classin_app_reminder: bool = False
-
     # Claude (schedule parsing, notification copy)
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5"

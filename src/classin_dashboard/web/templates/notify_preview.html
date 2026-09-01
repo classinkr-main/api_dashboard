@@ -14,19 +14,6 @@
     <textarea name="message_{{ p.uid }}" style="margin-top:8px">{{ p.message }}</textarea>
   </div>
   {% endfor %}
-  <input type="hidden" name="window_hours" value="{{ window_hours }}">
-  {% if app_reminder_enabled %}
-  <div class="panel" style="border-color:var(--warn)">
-    <label style="font-weight:600">
-      <input type="checkbox" name="post_to_classin" value="1" style="width:auto">
-      ClassIn 앱에도 게시 (실험 기능)
-    </label>
-    <p style="color:var(--muted);font-size:12px;margin:6px 0 0">
-      코스마다 토론 활동 1건(제목 50자)으로 게시됩니다. 앱 푸시 발생 여부는 미확인이므로
-      실코스 1곳에서 먼저 검증하세요.
-    </p>
-  </div>
-  {% endif %}
   <button type="submit">기록 저장 (단체)</button>
   <a class="btn secondary" href="{{ url_for('notify_home') }}">취소</a>
 </form>
