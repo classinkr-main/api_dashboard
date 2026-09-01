@@ -1,0 +1,30 @@
+{
+  "SID": 1000001,
+  "Cmd": "End",
+  "_id": "sample-end-001",
+  "CourseID": 501,
+  "ClassID": 9001,
+  "StartTime": 1756803600,
+  "CloseTime": 1756812000,
+  "RealCloseTime": 1756810800,
+  "TimeStamp": 1756812000,
+  "Data": {
+    "inoutEnd": {
+      "10001": {"Total": 7100, "Identity": 1, "Details": [{"Type": "In", "Device": 1, "Time": 1756803650}]},
+      "10002": {"Total": 5200, "Identity": 1, "Details": []}
+    },
+    "equipmentsEnd": {
+      "10001": {"Camera": {"Total": 6900, "TotalNotDisabled": 7100}, "Microphone": {"Total": 600, "TotalNotDisabled": 900}},
+      "10002": {"Camera": {"Total": 4000, "TotalNotDisabled": 5200}, "Microphone": {"Total": 120, "TotalNotDisabled": 300}}
+    },
+    "handsupEnd": {"10001": {"Total": 4, "CTime": 30}},
+    "awardEnd": {"10001": {"Total": 2}, "10002": {"Total": 1}},
+    "answerEnd": {
+      "Count": 1,
+      "AverageAccuracy": 0.5,
+      "Answers": [
+        {"Participants": [{"Uid": 10001, "ShowName": "김성실", "Identity": 1}], "SelectedItem": ["A"], "CorrectItems": ["A"], "Accuracy": 1}
+      ]
+    }
+  }
+}

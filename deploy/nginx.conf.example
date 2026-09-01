@@ -1,0 +1,43 @@
+# nginx example for api.classin.co.kr — ClassIn 학원 대시보드 (/dash)
+#
+# The app runs uvicorn with root_path=/dash (see .env: DASH_ROOT_PATH), so it
+# generates its own links as /dash/... . The proxy must therefore STRIP the
+# /dash/ prefix before forwarding to the app, which listens on / internally.
+#
+# IMPORTANT: /dash/webhook/classin (ClassIn Data Sub webhook receiver) must
+# stay reachable over HTTPS with no auth/IP allowlist in front of it — the
+# ClassIn server calls it directly, unauthenticated at the proxy layer,
+# authenticated only via DASH_WEBHOOK_SAFEKEY at the application layer.
+# Do not put this location behind basic auth, client-cert auth, or an IP
+# allowlist, and do not rate-limit it aggressively.
+
+server {
+    listen 443 ssl http2;
+    server_name api.classin.co.kr;
+
+    # ssl_certificate     /etc/letsencrypt/live/api.classin.co.kr/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/api.classin.co.kr/privkey.pem;
+
+    # --- ClassIn 학원 대시보드 (FastAPI, uvicorn root_path=/dash) ---
+    location /dash/ {
+        # Trailing slash on both sides: strips the /dash/ prefix before
+        # forwarding, e.g. /dash/webhook/classin -> /webhook/classin.
+        proxy_pass http://127.0.0.1:8100/;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+
+        # Cookies are marked Secure (DASH_COOKIE_SECURE=true); this location
+        # must be served over HTTPS only for login sessions to work.
+    }
+
+    # Optional: redirect bare domain root or unrelated paths elsewhere,
+    # or 404 — this file only documents the /dash/ location.
+
+    # If other vhosts on this server use HTTP->HTTPS redirect, mirror that
+    # here (a `listen 80` server block redirecting to https://$host$request_uri).
+}

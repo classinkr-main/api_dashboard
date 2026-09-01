@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}생성 결과 — ClassIn{% endblock %}
+{% block content %}
+<h1>생성 결과</h1>
+{% if created %}
+<div class="panel">
+  <h2 style="margin-top:0">생성됨 ({{ created | length }})</h2>
+  <ul>{% for item in created %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if errors %}
+<div class="panel">
+  <h2 style="margin-top:0;color:var(--bad)">실패 ({{ errors | length }})</h2>
+  <ul>{% for item in errors %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if not created and not errors %}
+<div class="empty">생성할 항목이 없습니다.</div>
+{% endif %}
+<p>
+  <a class="btn" href="{{ url_for('dashboard_home') }}">대시보드로</a>
+  <a class="btn secondary" href="{{ url_for('create_home') }}">추가 생성</a>
+</p>
+{% endblock %}

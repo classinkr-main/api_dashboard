@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}알림 — ClassIn{% endblock %}
+{% block content %}
+<h1>숙제 미제출 알림</h1>
+{% if request.query_params.get('sent') %}
+<div class="notice ok">{{ request.query_params.get('sent') }}건의 문구를 기록했습니다. 아래 발송 이력에서 복사해 사용하세요.</div>
+{% endif %}
+<div class="notice info">
+  ClassIn API에는 원격 메시지 발송 기능이 없어(확인됨), 문구를 생성·기록한 뒤 복사해
+  카톡/문자로 보내는 방식입니다. 알림톡(알리고/솔라피) 연동 시 자동 발송으로 전환됩니다.
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">미제출 학생 (최근 {{ window_hours }}시간)</h2>
+  <form method="get" action="{{ url_for('notify_home') }}" style="margin-bottom:10px">
+    <label>조회 기간(시간)
+      <input type="text" name="window_hours" value="{{ window_hours }}" style="width:80px">
+    </label>
+    <button type="submit" class="secondary" style="margin-top:6px">조회</button>
+  </form>
+  {% if rows %}
+  <div class="table-wrap"><table class="data">
+    <tr><th>학생</th><th>반/코스</th><th>수업일</th><th>출결</th><th>연락처</th></tr>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.student_name }}</td>
+      <td>{{ r.class_name or r.course_name or '—' }}</td>
+      <td>{{ r.lesson_date | date_kst }}</td>
+      <td>{{ r.attendance or '—' }}</td>
+      <td>{% if r.parent_phone %}{{ r.parent_phone }}{% else %}<span class="badge warn">연락처 없음</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+
+  <form method="post" action="{{ url_for('notify_compose') }}" class="stack">
+    <input type="hidden" name="window_hours" value="{{ window_hours }}">
+    <label>문구 생성 방식</label>
+    <select name="mode">
+      {% if ai_available %}<option value="ai">AI 개인화 문구 (학생별 다르게)</option>{% endif %}
+      <option value="template">템플릿 문구</option>
+    </select>
+    <label>톤 (템플릿일 때)</label>
+    <select name="tone">
+      <option value="soft">부드럽게</option>
+      <option value="firm">단호하게</option>
+      <option value="brief">간결하게</option>
+    </select>
+    <label>학원 이름</label>
+    <input type="text" name="academy_name" value="우리 학원">
+    <button type="submit">문구 생성 (미리보기)</button>
+  </form>
+  {% else %}
+  <div class="empty">
+    이 기간에 미제출 기록이 없습니다. 미제출은 출석 웹훅으로 명단이 만들어지고
+    HomeworkSubmit 웹훅 부재로 판정되므로, 숙제가 출제된 수업의 웹훅 수신 이후에 나타납니다.
+  </div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">발송 이력</h2>
+  {% if history %}
+  <div class="table-wrap"><table class="data">
+    <tr><th>일시</th><th>학생</th><th>상태</th><th>문구</th></tr>
+    {% for h in history %}
+    <tr>
+      <td>{{ h.created_at | date_kst }}</td>
+      <td>{{ h.student_name or h.student_uid }}</td>
+      <td><span class="badge {{ {'sent':'ok','dry_run':'muted','failed':'bad'}.get(h.status,'muted') }}">
+        {{ {'sent':'발송됨','dry_run':'문구 생성됨','failed':'실패'}.get(h.status, h.status) }}</span></td>
+      <td style="white-space:pre-wrap;max-width:420px">{{ h.message }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+  <div class="empty">아직 발송 이력이 없습니다.</div>
+  {% endif %}
+</div>
+{% endblock %}

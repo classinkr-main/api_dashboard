@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}로그인 — ClassIn 대시보드{% endblock %}
+{% block content %}
+<div class="panel" style="max-width: 420px; margin: 60px auto;">
+  <h1>ClassIn 대시보드 로그인</h1>
+  {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+  <form class="stack" method="post" action="{{ url_for('login_submit') }}">
+    {% if auth_mode == 'credential' %}
+      <label for="sid">ClassIn SID (uid)</label>
+      <input type="text" id="sid" name="sid" required autocomplete="username">
+      <label for="secret">Secret</label>
+      <input type="password" id="secret" name="secret" required autocomplete="current-password">
+    {% else %}
+      <label for="password">접속 비밀번호</label>
+      <input type="password" id="password" name="password" required>
+    {% endif %}
+    <label for="role">역할</label>
+    <select id="role" name="role">
+      <option value="owner">원장/대표 (모아보기)</option>
+      <option value="teacher">선생님 (생성/알림)</option>
+    </select>
+    <button type="submit">로그인</button>
+  </form>
+  <p style="color: var(--muted); font-size: 12px; margin-top: 14px;">
+    Secret은 서버 세션에만 보관되며 브라우저에 저장되지 않습니다.
+  </p>
+</div>
+{% endblock %}

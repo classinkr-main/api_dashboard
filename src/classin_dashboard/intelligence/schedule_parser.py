@@ -1,0 +1,65 @@
+"""Free-form schedule text/CSV → structured courses/lessons via Claude."""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from pydantic import BaseModel
+
+from ..config import Settings
+from .claude import run_json
+
+SCHEDULE_PARSE_PROMPT = """당신은 학원 스케줄 파싱 어시스턴트다.
+입력으로 받은 자유 형식 스케줄 표(또는 CSV)를 구조화된 JSON 으로 변환한다.
+
+## 출력 스키마 (반드시 이 JSON 배열만 출력, 다른 설명 금지)
+
+[
+  {
+    "course_name": "고2 수학 A반",
+    "teacher_name": "김선생",
+    "lessons": [
+      {
+        "title": "수1 - 지수함수 1",
+        "start_at": "2026-05-06T19:00:00+09:00",
+        "end_at":   "2026-05-06T21:00:00+09:00",
+        "homework": { "title": "수1 워크북 p.42-48", "due_at": "2026-05-08T23:59:00+09:00" }
+      }
+    ]
+  }
+]
+
+## 규칙
+- 한국 시간(KST, +09:00) 기준.
+- 숙제가 명시되지 않은 수업은 "homework": null 로 둔다.
+- 날짜가 "화/목 7-9시" 같은 요일 패턴이면 명시된 시작/종료 주를 기준으로 실제 날짜로 펼쳐라.
+- 모호한 항목은 추측하지 말고 생략하라. 환각 금지."""
+
+
+class ParsedHomework(BaseModel):
+    title: str
+    due_at: datetime | None = None
+
+
+class ParsedLesson(BaseModel):
+    title: str
+    start_at: datetime
+    end_at: datetime
+    homework: ParsedHomework | None = None
+
+
+class ParsedCourse(BaseModel):
+    course_name: str
+    teacher_name: str | None = None
+    lessons: list[ParsedLesson] = []
+
+
+def parse_schedule(settings: Settings, raw_text: str) -> list[ParsedCourse]:
+    data = run_json(
+        settings,
+        system=SCHEDULE_PARSE_PROMPT,
+        user=f"## 입력 스케줄\n\n{raw_text.strip()}",
+    )
+    if not isinstance(data, list):
+        raise ValueError(f"expected a JSON array, got {type(data).__name__}")
+    return [ParsedCourse.model_validate(c) for c in data]

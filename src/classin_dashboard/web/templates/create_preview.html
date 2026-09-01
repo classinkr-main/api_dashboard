@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}생성 미리보기 — ClassIn{% endblock %}
+{% block content %}
+<h1>파싱 결과 미리보기</h1>
+<div class="notice info">아래 내용 확인 후 [ClassIn에 생성]을 눌러야 실제 생성됩니다.</div>
+
+{% for c in courses %}
+<div class="panel">
+  <h2 style="margin-top:0">{{ c.course_name }}
+    <span class="badge muted">{{ c.teacher_name or '선생님 미지정' }}</span></h2>
+  <div class="table-wrap"><table class="data">
+    <tr><th>수업</th><th>시작</th><th>종료</th><th>숙제</th></tr>
+    {% for l in c.lessons %}
+    <tr>
+      <td>{{ l.title }}</td>
+      <td>{{ l.start_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{{ l.end_at.strftime('%H:%M') }}</td>
+      <td>{% if l.homework %}{{ l.homework.title }}
+        {% if l.homework.due_at %}(마감 {{ l.homework.due_at.strftime('%m-%d %H:%M') }}){% endif %}
+        {% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endfor %}
+
+<form method="post" action="{{ url_for('create_execute') }}">
+  <input type="hidden" name="plan_json" value="{{ plan_json | e }}">
+  <input type="hidden" name="teacher_map" value="{{ teacher_map | e }}">
+  <input type="hidden" name="default_teacher_uid" value="{{ default_teacher_uid | e }}">
+  <button type="submit">ClassIn에 생성</button>
+  <a class="btn secondary" href="{{ url_for('create_home') }}">다시 입력</a>
+</form>
+{% endblock %}

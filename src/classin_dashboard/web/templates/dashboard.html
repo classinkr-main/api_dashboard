@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}대시보드 — ClassIn{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between">
+  <h1>모아보기</h1>
+  <form method="post" action="{{ url_for('dashboard_sync') }}">
+    <button type="submit" class="secondary" style="margin-top:0">ClassIn에서 동기화</button>
+  </form>
+</div>
+{% if sync == 'ok' %}
+<div class="notice ok">ClassIn 조회 API에서 {{ sync_n }}건을 동기화했습니다.</div>
+{% elif sync == 'unavailable' %}
+<div class="notice info">
+  조회 API(getCourseList 등)가 이 SID에 아직 활성화되지 않았습니다. ClassIn 담당자에게
+  read API 활성화를 요청하세요. 그동안은 웹훅(Data Sub) 수신 데이터로 대시보드가 채워집니다.
+</div>
+{% endif %}
+
+<div class="grid cols-3">
+  <div class="panel stat">
+    <div class="label">코스</div>
+    <div class="value">{{ data.course_count }}</div>
+    <div class="sub">수업 {{ data.lesson_count }}개</div>
+  </div>
+  <div class="panel stat">
+    <div class="label">학생 (최근 {{ data.days }}일 활동)</div>
+    <div class="value">{{ data.student_count }}</div>
+    <div class="sub">
+      집중관리 {{ data.risk_counts.high }} · 주의 {{ data.risk_counts.medium }}
+    </div>
+  </div>
+  <div class="panel stat">
+    <div class="label">출석률</div>
+    <div class="value">{{ '%.0f%%' % (data.attendance_rate * 100) if data.attendance_rate is not none else '—' }}</div>
+    <div class="sub">숙제 미제출 {{ data.homework_missing }}건</div>
+  </div>
+</div>
+
+<div class="grid cols-3" style="grid-template-columns: 1fr 1fr;">
+  <div class="panel">
+    <h2 style="margin-top:0">주간 출석률 추이</h2>
+    {{ attendance_chart | safe }}
+  </div>
+  <div class="panel">
+    <h2 style="margin-top:0">주간 숙제 점수 추이</h2>
+    {{ score_chart | safe }}
+  </div>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">코스 목록</h2>
+  {% if courses %}
+  <div class="table-wrap">
+  <table class="data">
+    <tr><th>코스</th><th>담당</th><th>수업 수</th><th>등록 경로</th><th></th></tr>
+    {% for c in courses %}
+    <tr>
+      <td>{{ c.name or ('코스 ' ~ c.course_id) }}</td>
+      <td>{{ c.teacher_name or (c.teacher_uid or '—') }}</td>
+      <td>{{ lessons_by_course.get(c.course_id, 0) }}</td>
+      <td><span class="badge muted">{{ 'API 생성' if c.created_via == 'api' else '웹훅 수집' }}</span></td>
+      <td><a href="{{ url_for('course_detail', course_id=c.course_id) }}">상세</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}
+  <div class="empty">아직 수집된 코스가 없습니다. 생성 탭에서 코스를 만들거나, 웹훅(Data Sub)이 수신되면 자동으로 채워집니다.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">웹훅 수신 현황</h2>
+  {% if data.event_counts %}
+  <div class="table-wrap">
+  <table class="data">
+    <tr><th>이벤트(Cmd)</th><th>누적 수신</th></tr>
+    {% for cmd, n in data.event_counts.items() %}
+    <tr><td>{{ cmd }}</td><td>{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    수신된 웹훅이 없습니다. ClassIn Data Sub 엔드포인트를
+    <code>https://api.classin.co.kr/dash/webhook/classin</code> 으로 등록하세요.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

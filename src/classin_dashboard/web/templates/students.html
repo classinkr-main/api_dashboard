@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}학생별 모아보기 — ClassIn{% endblock %}
+{% block content %}
+<h1>학생별 모아보기</h1>
+
+{% if detail %}
+<div class="panel">
+  <h2 style="margin-top:0">{{ detail.name }} <span class="badge {{ {'high':'bad','medium':'warn','good':'ok'}[detail.metrics.risk_level] }}">
+    {{ {'high':'집중 관리','medium':'주의','good':'양호'}[detail.metrics.risk_level] }}</span></h2>
+  <div class="grid cols-3">
+    <div class="stat"><div class="label">출석률</div>
+      <div class="value">{{ '%.0f%%' % (detail.metrics.attendance_rate * 100) if detail.metrics.attendance_rate is not none else '—' }}</div>
+      <div class="sub">출석 {{ detail.metrics.present_count }} · 지각 {{ detail.metrics.late_count }} · 결석 {{ detail.metrics.absent_count }}</div></div>
+    <div class="stat"><div class="label">숙제</div>
+      <div class="value">{{ detail.metrics.homework_missing }}</div>
+      <div class="sub">미제출 건수 (수업 {{ detail.metrics.lesson_count }}회 중)</div></div>
+    <div class="stat"><div class="label">평균 점수</div>
+      <div class="value">{{ detail.metrics.score_avg if detail.metrics.score_avg is not none else '—' }}</div>
+      <div class="sub">숙제 점수 기준</div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr">
+    <div><h2>출석률 추이</h2>{{ detail_charts.attendance | safe }}</div>
+    <div><h2>점수 추이</h2>{{ detail_charts.score | safe }}</div>
+  </div>
+  {% if detail.exams %}
+  <h2>시험 결과 (OMR/답안지)</h2>
+  <div class="table-wrap"><table class="data">
+    <tr><th>시험</th><th>점수</th><th>만점</th><th>수신일</th></tr>
+    {% for e in detail.exams %}
+    <tr><td>{{ e.name }}</td><td>{{ e.score if e.score is not none else '—' }}</td>
+        <td>{{ e.max_score if e.max_score is not none else '—' }}</td>
+        <td>{{ e.received_at | date_kst }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+  <h2>수업 기록</h2>
+  <div class="table-wrap"><table class="data">
+    <tr><th>일자</th><th>수업</th><th>출결</th><th>참여(분)</th><th>숙제</th><th>점수</th></tr>
+    {% for r in detail.rows %}
+    <tr>
+      <td>{{ r.lesson_date | date_kst }}</td>
+      <td>{{ r.class_name or r.lesson_id }}</td>
+      <td><span class="badge {{ {'출석':'ok','지각':'warn','결석':'bad'}.get(r.attendance, 'muted') }}">{{ r.attendance or '—' }}</span></td>
+      <td>{{ '%.0f' % (r.attendance_seconds / 60) if r.attendance_seconds else '—' }}</td>
+      <td>{% if r.homework_submitted == 1 %}제출{% elif r.homework_submitted == 0 %}<span class="badge bad">미제출</span>{% else %}—{% endif %}</td>
+      <td>{{ r.homework_score if r.homework_score is not none else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endif %}
+
+<div class="panel">
+  <h2 style="margin-top:0">전체 학생 (최근 {{ days }}일)</h2>
+  {% if students %}
+  <div class="table-wrap"><table class="data">
+    <tr><th>학생</th><th>반</th><th>상태</th><th>출석률</th><th>미제출</th><th>평균점수</th><th>수업수</th></tr>
+    {% for s in students %}
+    <tr>
+      <td><a href="{{ url_for('students_view') }}?uid={{ s.uid }}">{{ s.name }}</a></td>
+      <td>{{ s.class_name or '—' }}</td>
+      <td><span class="badge {{ {'high':'bad','medium':'warn','good':'ok'}[s.risk_level] }}">
+        {{ {'high':'집중 관리','medium':'주의','good':'양호'}[s.risk_level] }}</span></td>
+      <td>{{ '%.0f%%' % (s.attendance_rate * 100) if s.attendance_rate is not none else '—' }}</td>
+      <td>{{ s.homework_missing }}</td>
+      <td>{{ s.score_avg if s.score_avg is not none else '—' }}</td>
+      <td>{{ s.lesson_count }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+  <div class="empty">웹훅(출석 이벤트)이 수신되면 학생 목록이 자동으로 채워집니다.</div>
+  {% endif %}
+</div>
+{% endblock %}

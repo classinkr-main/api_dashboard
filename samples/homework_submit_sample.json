@@ -1,0 +1,19 @@
+{
+  "SID": 1000001,
+  "Cmd": "HomeworkSubmit",
+  "_id": "sample-hws-001",
+  "CourseID": 501,
+  "ClassID": 9001,
+  "TimeStamp": 1756890000,
+  "Data": {
+    "UnitId": 301,
+    "ActivityId": 7001,
+    "ActivityName": "수1 워크북 p.42-48",
+    "StudentInfo": {"StudentUid": 10001, "StudentName": "김성실", "StudentAccount": "010-0000-0001"},
+    "TeacherInfo": {"TeacherUid": 20001, "TeacherName": "김선생"},
+    "SubmissionTime": 1756889000,
+    "IsSubmitLate": 0,
+    "StudentTotal": 3,
+    "SubmitTotal": 1
+  }
+}

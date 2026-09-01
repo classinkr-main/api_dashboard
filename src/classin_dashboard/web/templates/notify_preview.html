@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}알림 문구 미리보기 — ClassIn{% endblock %}
+{% block content %}
+<h1>알림 문구 미리보기</h1>
+{% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+<div class="notice info">문구를 수정한 뒤 [기록 저장]을 누르면 발송 이력에 저장됩니다.</div>
+
+<form method="post" action="{{ url_for('notify_send') }}">
+  {% for p in preview %}
+  <div class="panel">
+    <strong>{{ p.name }}</strong>
+    <span class="badge muted">미제출 {{ p.missing_count }}건</span>
+    <input type="hidden" name="name_{{ p.uid }}" value="{{ p.name }}">
+    <textarea name="message_{{ p.uid }}" style="margin-top:8px">{{ p.message }}</textarea>
+  </div>
+  {% endfor %}
+  <button type="submit">기록 저장 (단체)</button>
+  <a class="btn secondary" href="{{ url_for('notify_home') }}">취소</a>
+</form>
+{% endblock %}

@@ -1,0 +1,22 @@
+{
+  "SID": 1000001,
+  "Cmd": "Attendance",
+  "_id": "sample-att-001",
+  "CourseID": 501,
+  "ClassID": 9001,
+  "CourseName": "고2 수학 A반",
+  "ClassName": "수1 - 지수함수 1",
+  "ClassStartTime": 1756803600,
+  "ClassEndTime": 1756810800,
+  "AttendanceStudentNum": 2,
+  "ClassStudentNum": 3,
+  "AttendanceFlag": 1,
+  "ActionTime": 1756810800,
+  "TimeStamp": 1756812000,
+  "Data": [
+    {"Uid": 10001, "Name": "김성실", "Identity": 1, "AttendanceTime": 7100, "FirstInTime": 1756803650, "LastOutTime": 1756810790},
+    {"Uid": 10002, "Name": "이지각", "Identity": 1, "AttendanceTime": 5200, "FirstInTime": 1756805600, "LastOutTime": 1756810800},
+    {"Uid": 10003, "Name": "박결석", "Identity": 1, "AttendanceTime": 0, "FirstInTime": null, "LastOutTime": null},
+    {"Uid": 20001, "Name": "김선생", "Identity": 3, "AttendanceTime": 7200, "FirstInTime": 1756803600, "LastOutTime": 1756810800}
+  ]
+}

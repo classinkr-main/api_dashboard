@@ -1,0 +1,21 @@
+# ClassIn 학원 대시보드 — docker compose up -d
+#
+# Notes:
+# - Bound to 127.0.0.1 only; the reverse proxy (nginx) on the same host
+#   forwards from https://api.classin.co.kr/dash/ to 127.0.0.1:8100.
+# - DASH_DATA_DIR in .env should stay relative ("data") — the container's
+#   WORKDIR is /app, so that resolves to /app/data, which this compose file
+#   mounts as ./data on the host for persistence/backup.
+
+services:
+  dash:
+    build: .
+    image: classin-dashboard:latest
+    container_name: classin-dashboard
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8100:8100"
+    volumes:
+      - ./data:/app/data

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ course.name or '코스' }} — ClassIn{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('dashboard_home') }}">← 대시보드</a></p>
+<h1>{{ course.name or ('코스 ' ~ course.course_id) }}</h1>
+<p style="color:var(--muted)">코스 ID {{ course.course_id }} · 출결 레코드 {{ record_count }}건</p>
+
+<div class="panel">
+  <h2 style="margin-top:0">수업 차시</h2>
+  {% if lessons %}
+  <div class="table-wrap">
+  <table class="data">
+    <tr><th>수업</th><th>일시</th><th>출석</th><th>지각</th><th>결석</th><th>숙제</th></tr>
+    {% for l in lessons %}
+    {% set s = lesson_stats.get(l.lesson_id) %}
+    <tr>
+      <td>{{ l.title or l.lesson_id }}</td>
+      <td>{{ l.start_time | ts_kst }}</td>
+      <td>{{ s.present if s else '—' }}</td>
+      <td>{{ s.late if s else '—' }}</td>
+      <td>{{ s.absent if s else '—' }}</td>
+      <td>{% if l.homework_activity_id %}<span class="badge">숙제 있음</span>{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}
+  <div class="empty">이 코스의 수업이 아직 없습니다.</div>
+  {% endif %}
+</div>
+{% endblock %}
