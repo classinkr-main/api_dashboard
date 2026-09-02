@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif; font-size: 14px; line-height: 1.55; color: #1c2430; }
+    a { color: #2f6fed; } a:hover { color: #1f56c9; }
+  </style>
+</helmet>
+<div style="width: 1280px; min-height: 980px; background: #f6f7f9; display: flex; flex-direction: column;">
+
+  <div style="display: flex; align-items: center; gap: 20px; background: #ffffff; border-bottom: 1px solid #e3e6ea; padding: 10px 24px;">
+    <span style="font-weight: 700; font-size: 15px; color: #1c2430;">ClassIn 대시보드</span>
+    <div style="display: flex; gap: 4px; flex-grow: 1;">
+      <span style="padding: 6px 12px; border-radius: 8px; color: #6b7686; font-weight: 500;">대시보드</span>
+      <span style="padding: 6px 12px; border-radius: 8px; color: #6b7686; font-weight: 500;">학생별</span>
+      <span style="padding: 6px 12px; border-radius: 8px; color: #6b7686; font-weight: 500;">선생님별</span>
+      <span style="padding: 6px 12px; border-radius: 8px; background: #e8effd; color: #2f6fed; font-weight: 500;">생성</span>
+      <span style="padding: 6px 12px; border-radius: 8px; color: #6b7686; font-weight: 500;">알림</span>
+    </div>
+    <span style="color: #6b7686; font-size: 13px;">선생님 · SID 1000082</span>
+  </div>
+
+  <div style="width: 1100px; margin: 24px auto 0; padding: 0 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="display: flex; align-items: baseline; justify-content: space-between;">
+      <h1 style="font-size: 20px; margin: 0; font-weight: 700;">스케줄 넣기</h1>
+      <span style="color: #6b7686; font-size: 13px;">붙여넣으면 코스·선생님·일정을 알아서 인식합니다</span>
+    </div>
+
+    <div style="background: #ffffff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="border: 1.5px dashed #c9d3e6; border-radius: 8px; background: #fbfcfe; padding: 18px 20px; min-height: 150px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-size: 15px; color: #1c2430; white-space: pre-line; line-height: 1.7;">고2 수학 A반 김선생 화/목 19:00-21:00, 5월 첫째 주부터 4주
+숙제: 워크북 p.42-48 (수업 이틀 뒤 마감)
+중3 영어 B반 이선생 월수금 4-6시 5/4~5/29</div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: auto; color: #6b7686; font-size: 12px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7686" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"></path><path d="M6 10l6-6 6 6"></path><path d="M4 20h16"></path></svg>
+          <span>텍스트 · CSV · 시트 복사 · 이미지(예정) 모두 이 칸에 붙여넣기</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 4px 12px;">
+        <div style="display: flex; align-items: center; gap: 10px; color: #1e9e6a; font-size: 13px; font-weight: 600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1e9e6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          <span>인식 완료 · 코스 2개 · 수업 20회 · 자유 텍스트</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <span style="padding: 9px 18px; background: #eef0f3; color: #1c2430; border-radius: 8px; font-weight: 600;">다시 인식</span>
+          <span style="padding: 9px 18px; background: #2f6fed; color: #ffffff; border-radius: 8px; font-weight: 600;">미리보기 20개 수업</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+
+      <div style="background: #ffffff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 9h18"></path></svg>
+          <span style="font-weight: 700; font-size: 13px; color: #1c2430;">코스</span>
+          <span style="margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #eef0f3; color: #6b7686;">2</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #e3e6ea; border-radius: 8px;">
+            <span style="font-weight: 600;">고2 수학 A반</span>
+            <span style="padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #e8effd; color: #2f6fed;">새로 생성</span>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #e3e6ea; border-radius: 8px;">
+            <span style="font-weight: 600;">중3 영어 B반</span>
+            <span style="padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #e5f6ee; color: #1e9e6a;">기존 코스 재사용</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg>
+          <span style="font-weight: 700; font-size: 13px; color: #1c2430;">선생님</span>
+          <span style="margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #fdf0e0; color: #d97706;">1 확인</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #e3e6ea; border-radius: 8px;">
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-weight: 600;">김선생</span>
+              <span style="font-size: 12px; color: #6b7686;">→ 김민준 · UID 20001</span>
+            </div>
+            <span style="padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #e5f6ee; color: #1e9e6a;">자동 배정</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid #f0c98a; background: #fffaf2; border-radius: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-weight: 600;">이선생</span>
+              <span style="font-size: 12px; color: #d97706; font-weight: 600;">두 분이 있어요</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <span style="padding: 5px 10px; border-radius: 999px; border: 1px solid #2f6fed; background: #e8effd; color: #2f6fed; font-size: 12px; font-weight: 600;">이지은 20002</span>
+              <span style="padding: 5px 10px; border-radius: 999px; border: 1px solid #e3e6ea; background: #ffffff; color: #1c2430; font-size: 12px; font-weight: 600;">이현우 20003</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+          <span style="font-weight: 700; font-size: 13px; color: #1c2430;">일정</span>
+          <span style="margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #eef0f3; color: #6b7686;">20회</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #e3e6ea; border-radius: 8px;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <span style="padding: 2px 7px; border-radius: 6px; background: #e8effd; color: #2f6fed; font-size: 12px; font-weight: 700;">화</span>
+              <span style="padding: 2px 7px; border-radius: 6px; background: #e8effd; color: #2f6fed; font-size: 12px; font-weight: 700;">목</span>
+              <span style="font-weight: 600;">19:00–21:00</span>
+            </div>
+            <span style="font-size: 12px; color: #6b7686;">5/5 → 5/28 · 8회 · 숙제 8건 (이틀 뒤 마감)</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #e3e6ea; border-radius: 8px;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <span style="padding: 2px 7px; border-radius: 6px; background: #e8effd; color: #2f6fed; font-size: 12px; font-weight: 700;">월</span>
+              <span style="padding: 2px 7px; border-radius: 6px; background: #e8effd; color: #2f6fed; font-size: 12px; font-weight: 700;">수</span>
+              <span style="padding: 2px 7px; border-radius: 6px; background: #e8effd; color: #2f6fed; font-size: 12px; font-weight: 700;">금</span>
+              <span style="font-weight: 600;">16:00–18:00</span>
+            </div>
+            <span style="font-size: 12px; color: #6b7686;">5/4 → 5/29 · 12회 · 숙제 없음</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: #ffffff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-weight: 700; font-size: 13px;">이렇게 이해했어요</span>
+      <div style="display: flex; flex-direction: column; gap: 6px; color: #1c2430;">
+        <div style="display: flex; gap: 10px; align-items: flex-start;">
+          <span style="width: 6px; height: 6px; border-radius: 999px; background: #2f6fed; margin-top: 8px; flex-shrink: 0;"></span>
+          <span>"5월 첫째 주"는 5/4(월) 주로 잡았어요. 다르면 아래 일정에서 바꿔주세요.</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: flex-start;">
+          <span style="width: 6px; height: 6px; border-radius: 999px; background: #2f6fed; margin-top: 8px; flex-shrink: 0;"></span>
+          <span>"4-6시"는 학원 시간대라 오후 16:00–18:00으로 봤어요.</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: flex-start;">
+          <span style="width: 6px; height: 6px; border-radius: 999px; background: #2f6fed; margin-top: 8px; flex-shrink: 0;"></span>
+          <span>"중3 영어 B반"은 이미 있는 코스(ID 502)와 같아서 새로 만들지 않아요.</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: #ffffff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 700; font-size: 13px;">고2 수학 A반 · 첫 4회</span>
+        <span style="color: #6b7686; font-size: 12px;">전체 8회 보기</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
+        <div style="border: 1px solid #e3e6ea; border-left: 3px solid #2f6fed; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 12px; color: #6b7686;">5/5 (화)</span>
+          <span style="font-weight: 600;">1차시</span>
+          <span style="font-size: 12px; color: #6b7686;">19:00–21:00 · 숙제 5/7 마감</span>
+        </div>
+        <div style="border: 1px solid #e3e6ea; border-left: 3px solid #2f6fed; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 12px; color: #6b7686;">5/7 (목)</span>
+          <span style="font-weight: 600;">2차시</span>
+          <span style="font-size: 12px; color: #6b7686;">19:00–21:00 · 숙제 5/9 마감</span>
+        </div>
+        <div style="border: 1px solid #e3e6ea; border-left: 3px solid #2f6fed; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 12px; color: #6b7686;">5/12 (화)</span>
+          <span style="font-weight: 600;">3차시</span>
+          <span style="font-size: 12px; color: #6b7686;">19:00–21:00 · 숙제 5/14 마감</span>
+        </div>
+        <div style="border: 1px solid #e3e6ea; border-left: 3px solid #2f6fed; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 12px; color: #6b7686;">5/14 (목)</span>
+          <span style="font-weight: 600;">4차시</span>
+          <span style="font-size: 12px; color: #6b7686;">19:00–21:00 · 숙제 5/16 마감</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

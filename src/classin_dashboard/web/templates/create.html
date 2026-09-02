@@ -4,33 +4,31 @@
 <h1>스케줄 → 코스/수업 생성</h1>
 {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
 {% if not ai_available %}
-<div class="notice info">AI 파싱을 사용하려면 서버에 DASH_ANTHROPIC_API_KEY를 설정하세요.</div>
+<div class="notice info">
+  AI 파싱 키(DASH_ANTHROPIC_API_KEY)가 없어 규칙 기반으로 해석합니다 — 표(CSV/TSV)는 그대로,
+  자유 텍스트는 요일·시간·기간을 인식합니다.
+</div>
+{% endif %}
+{% if teacher_count == 0 %}
+<div class="notice info">등록된 선생님이 없어 자동 배정을 할 수 없습니다 — 미리보기에서 UID를 직접 입력하세요.</div>
 {% endif %}
 <div class="panel">
   <form class="stack" method="post" action="{{ url_for('create_parse') }}">
-    <label for="schedule_text">스케줄표 (자유 텍스트 또는 CSV 붙여넣기)</label>
+    <label for="schedule_text">스케줄 붙여넣기 (자유 텍스트 · CSV · 시트 복사 모두 인식)</label>
     <textarea id="schedule_text" name="schedule_text" required
       placeholder="예)
-고2 수학 A반, 김선생, 화/목 19:00-21:00, 5월 첫째 주부터 4주
-숙제: 워크북 p.42-48 (수업 이틀 뒤 마감)
+고2 수학 A반 김선생 화/목 19:00-21:00 5월 첫째 주부터 4주
+숙제 워크북 p.42 이틀 뒤 마감
 
-또는 CSV:
-course_name,teacher,date,start,end,lesson_title,homework_title,homework_due
-고2 수학 A반,김선생,2026-05-06,19:00,21:00,수1 - 지수함수 1,워크북 p.42-48,2026-05-08 23:59">{{ schedule_text or '' }}</textarea>
-
-    <label for="teacher_map">선생님 이름 → ClassIn UID 매핑 (한 줄에 하나, 이름=UID)</label>
-    <textarea id="teacher_map" name="teacher_map" style="min-height:70px"
-      placeholder="김선생=20001&#10;이선생=20002">{{ teacher_map or '' }}</textarea>
-
-    <label for="default_teacher_uid">기본 선생님 UID (매핑에 없을 때 사용)</label>
-    <input type="text" id="default_teacher_uid" name="default_teacher_uid"
-      value="{{ default_teacher_uid or '' }}" placeholder="20001">
-
-    <button type="submit">AI로 파싱 (미리보기 — 아직 생성하지 않음)</button>
+또는 표 붙여넣기:
+코스,선생님,날짜,시작,종료,수업,숙제,마감
+고2 수학 A반,김선생,2026-05-06,19:00,21:00,지수함수 1,워크북 p.42-48,2026-05-08 23:59">{{ schedule_text or '' }}</textarea>
+    <button type="submit">파싱 (미리보기 — 아직 생성하지 않음)</button>
   </form>
 </div>
 <div class="panel" style="color:var(--muted);font-size:13px">
-  파싱 결과를 먼저 미리보기로 확인한 뒤, 확인 버튼을 눌러야 실제로 ClassIn에 생성됩니다.
+  선생님·기존 코스는 등록된 정보와 대조해 자동으로 배정합니다. 확실하지 않은 것만 미리보기에서 물어봅니다.
+  파싱 결과를 확인한 뒤 [ClassIn에 생성]을 눌러야 실제로 생성됩니다.
   숙제는 활동(껍데기)까지만 API로 생성됩니다 — 문항 내용은 ClassIn 화면에서 채워야 출제할 수 있습니다.
 </div>
 {% endblock %}

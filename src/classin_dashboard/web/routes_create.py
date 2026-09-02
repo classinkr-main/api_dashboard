@@ -1,4 +1,4 @@
-"""생성 (선생님): AI 스케줄 파싱 → 코스/수업 일괄 생성."""
+"""생성 (선생님): 붙여넣기 한 번 → 코스/수업/숙제 자동 인식 + 기존 엔티티 자동 배정."""
 
 from __future__ import annotations
 
@@ -11,25 +11,11 @@ from fastapi.responses import RedirectResponse
 
 from ..classin.actions import ACTIVITY_HOMEWORK, ClassInActions
 from ..classin.client import ClassInError
-from ..intelligence.schedule_parser import ParsedCourse, parse_schedule
+from ..intelligence.schedule_parser import SOURCE_LABELS, ParsePlan, smart_parse
 from .app import AppState, get_state, require_session, render
 
 log = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def _parse_teacher_map(raw: str) -> dict[str, int]:
-    """'김선생=20001' lines → {name: uid}."""
-    out: dict[str, int] = {}
-    for line in raw.splitlines():
-        if "=" not in line:
-            continue
-        name, _, uid = line.partition("=")
-        try:
-            out[name.strip()] = int(uid.strip())
-        except ValueError:
-            continue
-    return out
 
 
 @router.get("/create", name="create_home")
@@ -40,7 +26,10 @@ def create_home(request: Request, state: AppState = Depends(get_state)):
     return render(
         request,
         "create.html",
-        {"ai_available": bool(state.settings.anthropic_api_key)},
+        {
+            "ai_available": bool(state.settings.anthropic_api_key),
+            "teacher_count": len(state.events.teachers()),
+        },
         session=session,
         nav="create",
     )
@@ -51,14 +40,12 @@ def create_parse(
     request: Request,
     state: AppState = Depends(get_state),
     schedule_text: str = Form(...),
-    teacher_map: str = Form(""),
-    default_teacher_uid: str = Form(""),
 ):
     session = require_session(request)
     if isinstance(session, RedirectResponse):
         return session
     try:
-        courses = parse_schedule(state.settings, schedule_text)
+        plan = smart_parse(state.settings, state.events, schedule_text)
     except Exception as exc:
         log.exception("schedule parse failed")
         return render(
@@ -66,23 +53,21 @@ def create_parse(
             "create.html",
             {
                 "ai_available": bool(state.settings.anthropic_api_key),
+                "teacher_count": len(state.events.teachers()),
                 "error": f"스케줄 파싱 실패: {exc}",
                 "schedule_text": schedule_text,
-                "teacher_map": teacher_map,
-                "default_teacher_uid": default_teacher_uid,
             },
             session=session,
             nav="create",
         )
-    plan = [c.model_dump(mode="json") for c in courses]
     return render(
         request,
         "create_preview.html",
         {
-            "courses": courses,
-            "plan_json": json.dumps(plan, ensure_ascii=False),
-            "teacher_map": teacher_map,
-            "default_teacher_uid": default_teacher_uid,
+            "plan": plan,
+            "source_label": SOURCE_LABELS.get(plan.source_format, plan.source_format),
+            "all_teachers": state.events.teachers(),
+            "plan_json": json.dumps(plan.model_dump(mode="json"), ensure_ascii=False),
         },
         session=session,
         nav="create",
@@ -90,49 +75,50 @@ def create_parse(
 
 
 @router.post("/create/execute", name="create_execute")
-def create_execute(
-    request: Request,
-    state: AppState = Depends(get_state),
-    plan_json: str = Form(...),
-    teacher_map: str = Form(""),
-    default_teacher_uid: str = Form(""),
-):
+async def create_execute(request: Request, state: AppState = Depends(get_state)):
     session = require_session(request)
     if isinstance(session, RedirectResponse):
         return session
-    courses = [ParsedCourse.model_validate(c) for c in json.loads(plan_json)]
-    uid_map = _parse_teacher_map(teacher_map)
-    default_uid = int(default_teacher_uid) if default_teacher_uid.strip().isdigit() else None
+    form = await request.form()
+    plan = ParsePlan.model_validate(json.loads(str(form.get("plan_json") or "{}")))
+    _apply_teacher_overrides(plan, form)
 
     created: list[str] = []
     errors: list[str] = []
     with state.client_for(session) as client:
         actions = ClassInActions(client)
-        for course in courses:
-            teacher_uid = uid_map.get(course.teacher_name or "") or default_uid
-            if not teacher_uid:
+        for course in plan.courses:
+            if not course.teacher_uid:
                 errors.append(
-                    f"{course.course_name}: 선생님 UID를 찾을 수 없습니다"
-                    f" ({course.teacher_name or '미지정'}) — 매핑을 입력하세요."
+                    f"{course.course_name}: 선생님을 확정하지 못했습니다"
+                    f" ({course.teacher_name or '미지정'}) — 미리보기에서 선택하세요."
                 )
                 continue
-            # Idempotency key so a retried submit can't duplicate the course.
-            identity = hashlib.md5(
-                f"dash:{course.course_name}:{course.lessons[0].start_at if course.lessons else ''}".encode()
-            ).hexdigest()[:32]
-            try:
-                course_id = actions.add_course(
-                    course_name=course.course_name,
-                    main_teacher_uid=teacher_uid,
-                    unique_identity=identity,
-                )
-            except ClassInError as exc:
-                errors.append(f"{course.course_name}: addCourse 실패 — {exc.message}")
-                continue
+            course_id = course.existing_course_id
+            if course_id:
+                created.append(f"기존 코스 「{course.course_name}」 (ID {course_id}) 재사용")
+            else:
+                # Idempotency key so a retried submit can't duplicate the course.
+                identity = hashlib.md5(
+                    f"dash:{course.course_name}:"
+                    f"{course.lessons[0].start_at if course.lessons else ''}".encode()
+                ).hexdigest()[:32]
+                try:
+                    course_id = actions.add_course(
+                        course_name=course.course_name,
+                        main_teacher_uid=course.teacher_uid,
+                        unique_identity=identity,
+                    )
+                except ClassInError as exc:
+                    errors.append(f"{course.course_name}: addCourse 실패 — {exc.message}")
+                    continue
+                created.append(f"코스 「{course.course_name}」 (ID {course_id})")
             state.events.upsert_course(
-                course_id, name=course.course_name, teacher_uid=teacher_uid, created_via="api"
+                course_id,
+                name=course.course_name,
+                teacher_uid=course.teacher_uid,
+                created_via="api",
             )
-            created.append(f"코스 「{course.course_name}」 (ID {course_id})")
 
             unit_id = None
             if course.lessons:
@@ -151,7 +137,7 @@ def create_execute(
                     result = actions.create_classroom(
                         course_id=course_id,
                         name=lesson.title,
-                        teacher_uid=teacher_uid,
+                        teacher_uid=course.teacher_uid,
                         start_time=int(lesson.start_at.timestamp()),
                         end_time=int(lesson.end_at.timestamp()),
                         unit_id=unit_id,
@@ -167,7 +153,7 @@ def create_execute(
                         title=lesson.title,
                         start_time=int(lesson.start_at.timestamp()),
                         end_time=int(lesson.end_at.timestamp()),
-                        teacher_uid=teacher_uid,
+                        teacher_uid=course.teacher_uid,
                         created_via="api",
                     )
                 created.append(f"수업 「{lesson.title}」 (ID {class_id})")
@@ -179,7 +165,7 @@ def create_execute(
                             unit_id=unit_id,
                             activity_type=ACTIVITY_HOMEWORK,
                             name=lesson.homework.title,
-                            teacher_uid=teacher_uid,
+                            teacher_uid=course.teacher_uid,
                             start_time=int(lesson.end_at.timestamp()),
                             end_time=int(lesson.homework.due_at.timestamp())
                             if lesson.homework.due_at
@@ -205,3 +191,13 @@ def create_execute(
         session=session,
         nav="create",
     )
+
+
+def _apply_teacher_overrides(plan: ParsePlan, form) -> None:
+    """Per-course selects/manual UID inputs from the preview page win over resolution."""
+    for index, course in enumerate(plan.courses):
+        for field in (f"teacher_uid_manual_{index}", f"teacher_uid_{index}"):
+            value = str(form.get(field) or "").strip()
+            if value.isdigit():
+                course.teacher_uid = int(value)
+                break

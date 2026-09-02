@@ -1,33 +1,72 @@
 {% extends "base.html" %}
 {% block title %}생성 미리보기 — ClassIn{% endblock %}
+{% macro conf_badge(value) -%}
+<span class="badge {{ 'ok' if value >= 0.85 else ('warn' if value >= 0.6 else 'bad') }}">신뢰도 {{ (value * 100) | round | int }}%</span>
+{%- endmacro %}
 {% block content %}
 <h1>파싱 결과 미리보기</h1>
 <div class="notice info">아래 내용 확인 후 [ClassIn에 생성]을 눌러야 실제 생성됩니다.</div>
 
-{% for c in courses %}
 <div class="panel">
-  <h2 style="margin-top:0">{{ c.course_name }}
-    <span class="badge muted">{{ c.teacher_name or '선생님 미지정' }}</span></h2>
-  <div class="table-wrap"><table class="data">
-    <tr><th>수업</th><th>시작</th><th>종료</th><th>숙제</th></tr>
-    {% for l in c.lessons %}
-    <tr>
-      <td>{{ l.title }}</td>
-      <td>{{ l.start_at.strftime('%Y-%m-%d %H:%M') }}</td>
-      <td>{{ l.end_at.strftime('%H:%M') }}</td>
-      <td>{% if l.homework %}{{ l.homework.title }}
-        {% if l.homework.due_at %}(마감 {{ l.homework.due_at.strftime('%m-%d %H:%M') }}){% endif %}
-        {% else %}—{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table></div>
+  <span class="badge">{{ source_label }}</span>
+  <span class="badge muted">코스 {{ plan.courses | length }}개</span>
+  {% if plan.assumptions %}
+  <h2>자동으로 가정한 것</h2>
+  <ul>{% for a in plan.assumptions %}<li>{{ a }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if plan.needs_confirm %}
+  <h2 style="color:var(--warn)">확인이 필요한 것</h2>
+  <ul>{% for q in plan.needs_confirm %}<li>{{ q.message }}</li>{% endfor %}</ul>
+  {% endif %}
 </div>
-{% endfor %}
 
 <form method="post" action="{{ url_for('create_execute') }}">
   <input type="hidden" name="plan_json" value="{{ plan_json | e }}">
-  <input type="hidden" name="teacher_map" value="{{ teacher_map | e }}">
-  <input type="hidden" name="default_teacher_uid" value="{{ default_teacher_uid | e }}">
+  {% for c in plan.courses %}
+  <div class="panel">
+    <h2 style="margin-top:0">{{ c.course_name }}
+      {{ conf_badge(c.confidence) }}
+      {% if c.existing_course_id %}
+      <span class="badge ok">기존 코스 재사용 (ID {{ c.existing_course_id }})</span>
+      {% else %}<span class="badge muted">새 코스</span>{% endif %}
+    </h2>
+
+    {% if c.teacher_uid %}
+    <div>선생님 <span class="badge">{{ c.teacher_name or '자동 배정' }} · UID {{ c.teacher_uid }}</span></div>
+    <input type="hidden" name="teacher_uid_{{ loop.index0 }}" value="{{ c.teacher_uid }}">
+    {% else %}
+    <div class="notice error" style="margin:10px 0">
+      선생님을 확정하지 못했습니다{% if c.teacher_name %} (입력: {{ c.teacher_name }}){% endif %} — 선택하거나 UID를 입력하세요.
+    </div>
+    <label for="teacher_uid_{{ loop.index0 }}">등록된 선생님</label>
+    <select id="teacher_uid_{{ loop.index0 }}" name="teacher_uid_{{ loop.index0 }}">
+      <option value="">— 선택 —</option>
+      {% for t in (c.teacher_candidates or all_teachers) %}
+      <option value="{{ t.uid }}">{{ t.name or t.uid }} (UID {{ t.uid }})</option>
+      {% endfor %}
+    </select>
+    <label for="teacher_uid_manual_{{ loop.index0 }}">또는 ClassIn UID 직접 입력</label>
+    <input type="text" id="teacher_uid_manual_{{ loop.index0 }}"
+      name="teacher_uid_manual_{{ loop.index0 }}" placeholder="20001">
+    {% endif %}
+
+    <div class="table-wrap"><table class="data">
+      <tr><th>수업</th><th>시작</th><th>종료</th><th>숙제</th><th>신뢰도</th></tr>
+      {% for l in c.lessons %}
+      <tr>
+        <td>{{ l.title }}</td>
+        <td>{{ l.start_at.strftime('%Y-%m-%d (%a) %H:%M') }}</td>
+        <td>{{ l.end_at.strftime('%H:%M') }}</td>
+        <td>{% if l.homework %}{{ l.homework.title }}
+          {% if l.homework.due_at %}(마감 {{ l.homework.due_at.strftime('%m-%d %H:%M') }}){% endif %}
+          {% else %}—{% endif %}</td>
+        <td>{{ conf_badge(l.confidence) }}</td>
+      </tr>
+      {% endfor %}
+    </table></div>
+  </div>
+  {% endfor %}
+
   <button type="submit">ClassIn에 생성</button>
   <a class="btn secondary" href="{{ url_for('create_home') }}">다시 입력</a>
 </form>
