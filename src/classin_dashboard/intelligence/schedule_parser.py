@@ -25,6 +25,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from ..config import Settings
+from ..scope import Scope
 from .claude import run_json
 
 log = logging.getLogger(__name__)
@@ -95,6 +96,7 @@ class PlannedCourse(ParsedCourse):
     teacher_uid: int | None = None
     existing_course_id: int | None = None
     teacher_candidates: list[dict[str, Any]] = []
+    blocked_reason: str | None = None  # set by the role check at execute time
 
 
 class Question(BaseModel):
@@ -622,12 +624,12 @@ def _parse_with_ai(
 # -- entity resolution --------------------------------------------------------
 
 
-def _store_teachers(store: Any) -> list[dict[str, Any]]:
+def _store_teachers(store: Any, scope: Scope) -> list[dict[str, Any]]:
     if store is None:
         return []
     return [
         {"uid": int(row["uid"]), "name": row.get("name") or str(row["uid"])}
-        for row in store.teachers()
+        for row in store.teachers(scope=scope)
         if row.get("uid") is not None
     ]
 
@@ -744,10 +746,10 @@ def _resolve_course(
     return int(best_row["teacher_uid"]) if best_row.get("teacher_uid") else None
 
 
-def resolve_entities(plan: ParsePlan, store: Any) -> ParsePlan:
+def resolve_entities(plan: ParsePlan, store: Any, *, scope: Scope = Scope.ALL) -> ParsePlan:
     """Fill teacher_uid / existing_course_id in place; append questions we can't answer."""
-    teachers = _store_teachers(store)
-    course_rows = store.courses() if store is not None else []
+    teachers = _store_teachers(store, scope)
+    course_rows = store.courses(scope=scope) if store is not None else []
     for course in plan.courses:
         course_teacher_uid = _resolve_course(course, course_rows, plan)
         _resolve_teacher(course, teachers, plan, course_teacher_uid=course_teacher_uid)
@@ -762,6 +764,7 @@ def smart_parse(
     store: Any,
     raw_text: str,
     *,
+    scope: Scope = Scope.ALL,
     today: date | datetime | None = None,
 ) -> ParsePlan:
     """Parse anything a teacher pasted and resolve it against known ClassIn entities."""
@@ -774,7 +777,7 @@ def smart_parse(
         courses, assumptions = parse_table(text, today=day)
         source: str = "csv"
     else:
-        courses, assumptions, source = _free_text_courses(settings, store, text, day)
+        courses, assumptions, source = _free_text_courses(settings, store, text, day, scope)
 
     if not courses:
         raise ValueError("스케줄을 인식하지 못했습니다 — 코스명, 요일, 시간을 포함해 다시 입력해 주세요.")
@@ -784,11 +787,11 @@ def smart_parse(
         assumptions=assumptions,
         source_format=source,  # type: ignore[arg-type]
     )
-    return resolve_entities(plan, store)
+    return resolve_entities(plan, store, scope=scope)
 
 
 def _free_text_courses(
-    settings: Settings, store: Any, text: str, day: date
+    settings: Settings, store: Any, text: str, day: date, scope: Scope = Scope.ALL
 ) -> tuple[list[ParsedCourse], list[str], str]:
     if getattr(settings, "anthropic_api_key", ""):
         try:
@@ -797,6 +800,6 @@ def _free_text_courses(
                 return courses, assumptions, "text-ai"
         except Exception as exc:  # fall through to the deterministic reader
             log.warning("AI schedule parse failed, falling back to heuristics: %s", exc)
-    known = [t["name"] for t in _store_teachers(store)]
+    known = [t["name"] for t in _store_teachers(store, scope)]
     courses, assumptions = heuristic_parse(text, known, today=day)
     return courses, assumptions, "text-heuristic"

@@ -92,8 +92,12 @@ def _pick(row: dict, *keys: str) -> Any:
     return None
 
 
-def sync_masters(reads: ClassInReads, store) -> dict[str, Any]:
-    """Pull whatever read actions are enabled into the local master tables."""
+def sync_masters(reads: ClassInReads, store, *, branch_id: int | None = None) -> dict[str, Any]:
+    """Pull whatever read actions are enabled into the local master tables.
+
+    When `branch_id` is given (owner synced with a 관's own SID/secret), every
+    course this sync touches is tagged with that branch.
+    """
     result = {"courses": 0, "lessons": 0, "students": 0, "teachers": 0, "errors": []}
 
     courses = reads.course_list()
@@ -108,6 +112,8 @@ def sync_masters(reads: ClassInReads, store) -> dict[str, Any]:
                 teacher_uid=_pick(c, "mainTeacherUid", "teacherUid"),
                 created_via="api",
             )
+            if branch_id is not None:
+                store.set_course_branch(int(cid), branch_id)
             result["courses"] += 1
             classes = reads.course_classes(int(cid))
             for cl in classes or []:

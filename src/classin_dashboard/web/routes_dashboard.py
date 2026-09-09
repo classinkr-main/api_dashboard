@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 
 from .. import metrics
 from ..classin.reads import ClassInReads, sync_masters
-from .app import AppState, get_state, require_session, render
+from .app import AppState, forbidden, get_state, render, require_role, require_session
 from .charts import bar_chart, line_chart
 
 router = APIRouter()
@@ -23,8 +23,12 @@ def dashboard_sync(request: Request, state: AppState = Depends(get_state)):
     session = require_session(request)
     if isinstance(session, RedirectResponse):
         return session
-    with state.client_for(session) as client:
-        result = sync_masters(ClassInReads(client), state.events)
+    denied = require_role(request, session, "owner")
+    if denied is not None:
+        return denied
+    branch_id = session.branch_filter
+    with state.client_for(session, branch_id=branch_id) as client:
+        result = sync_masters(ClassInReads(client), state.events, branch_id=branch_id)
     url = str(request.url_for("dashboard_home"))
     synced = result["courses"] + result["lessons"] + result["students"] + result["teachers"]
     if synced:
@@ -44,10 +48,11 @@ def dashboard_home(
     if isinstance(session, RedirectResponse):
         return session
     days = max(7, min(days, 365))
-    data = metrics.overview(state.events, days=days)
-    courses = state.events.courses()
+    scope = state.scope_of(session)
+    data = metrics.overview(state.events, scope=scope, days=days)
+    courses = state.events.courses(scope=scope)
     lessons_by_course: dict[int, int] = {}
-    for lesson in state.events.lessons():
+    for lesson in state.events.lessons(scope=scope):
         if lesson.get("course_id"):
             lessons_by_course[lesson["course_id"]] = (
                 lessons_by_course.get(lesson["course_id"], 0) + 1
@@ -85,11 +90,15 @@ def course_detail(course_id: int, request: Request, state: AppState = Depends(ge
     session = require_session(request)
     if isinstance(session, RedirectResponse):
         return session
+    scope = state.scope_of(session)
+    allowed = state.events.course_ids_in_scope(scope)
+    if allowed is not None and course_id not in allowed:
+        return forbidden(request, session, "권한 범위 밖의 코스입니다.")
     course = next(
-        (c for c in state.events.courses() if c["course_id"] == course_id), None
+        (c for c in state.events.courses(scope=scope) if c["course_id"] == course_id), None
     )
-    lessons = state.events.lessons(course_id=course_id)
-    rows = state.events.lesson_records(course_id=course_id)
+    lessons = state.events.lessons(scope=scope, course_id=course_id)
+    rows = state.events.lesson_records(scope=scope, course_id=course_id)
     per_lesson: dict[str, list[dict]] = {}
     for r in rows:
         per_lesson.setdefault(r["lesson_id"], []).append(r)
@@ -126,11 +135,15 @@ def students_view(
     if isinstance(session, RedirectResponse):
         return session
     days = max(7, min(days, 365))
-    students = metrics.students_summary(state.events, days=days)
+    scope = state.scope_of(session)
+    students = metrics.students_summary(state.events, scope=scope, days=days)
     detail = None
     detail_charts = {}
     if uid is not None:
-        detail = metrics.student_detail(state.events, uid)
+        allowed = state.events.student_uids_in_scope(scope)
+        if allowed is not None and uid not in allowed:
+            return forbidden(request, session, "권한 범위 밖의 학생입니다.")
+        detail = metrics.student_detail(state.events, uid, scope=scope)
         detail_charts = {
             "attendance": line_chart(
                 [
@@ -166,7 +179,12 @@ def teachers_view(
     if isinstance(session, RedirectResponse):
         return session
     days = max(7, min(days, 365))
-    teachers = metrics.teachers_summary(state.events, days=days)
+    scope = state.scope_of(session)
+    if session.role == "teacher" and uid != session.teacher_uid:
+        # 선생님은 본인 화면만 본다.
+        url = request.url_for("teachers_view")
+        return RedirectResponse(f"{url}?uid={session.teacher_uid}", status_code=303)
+    teachers = metrics.teachers_summary(state.events, scope=scope, days=days)
     detail = next((t for t in teachers if t["uid"] == uid), None) if uid else None
     detail_chart = (
         bar_chart(detail["weekly_minutes"], "minutes", fmt="{:.0f}분") if detail else ""
@@ -179,7 +197,7 @@ def teachers_view(
         from ..classin.webhook_schemas import RatingEvent
 
         scores = []
-        for ev in state.events.events("Rating", teacher_uid=uid, limit=100):
+        for ev in state.events.events("Rating", scope=scope, teacher_uid=uid, limit=100):
             try:
                 rating = RatingEvent.model_validate(ev["payload"])
             except Exception:

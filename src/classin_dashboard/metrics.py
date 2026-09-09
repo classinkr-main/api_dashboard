@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from .scope import Scope
 from .store import EventStore
 
 PRESENT, LATE, ABSENT = "출석", "지각", "결석"
@@ -96,11 +97,11 @@ def weekly_score_trend(rows: list[dict], buckets: int = 14) -> list[dict]:
     ]
 
 
-def overview(store: EventStore, days: int = 90) -> dict[str, Any]:
+def overview(store: EventStore, *, scope: Scope, days: int = 90) -> dict[str, Any]:
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    rows = store.lesson_records(since=since)
-    courses = store.courses()
-    lessons = store.lessons()
+    rows = store.lesson_records(scope=scope, since=since)
+    courses = store.courses(scope=scope)
+    lessons = store.lessons(scope=scope)
     per_student: dict[int, list[dict]] = defaultdict(list)
     for r in rows:
         per_student[r["student_uid"]].append(r)
@@ -117,14 +118,14 @@ def overview(store: EventStore, days: int = 90) -> dict[str, Any]:
         "risk_counts": risk_counts,
         "attendance_trend": weekly_attendance_trend(rows),
         "score_trend": weekly_score_trend(rows),
-        "event_counts": store.counts_by_cmd(),
+        "event_counts": store.counts_by_cmd(scope=scope),
     }
 
 
-def students_summary(store: EventStore, days: int = 90) -> list[dict[str, Any]]:
+def students_summary(store: EventStore, *, scope: Scope, days: int = 90) -> list[dict[str, Any]]:
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    rows = store.lesson_records(since=since)
-    names = {s["uid"]: s for s in store.students()}
+    rows = store.lesson_records(scope=scope, since=since)
+    names = {s["uid"]: s for s in store.students(scope=scope)}
     per_student: dict[int, list[dict]] = defaultdict(list)
     for r in rows:
         per_student[r["student_uid"]].append(r)
@@ -153,11 +154,11 @@ def students_summary(store: EventStore, days: int = 90) -> list[dict[str, Any]]:
     return out
 
 
-def student_detail(store: EventStore, uid: int, days: int = 180) -> dict[str, Any]:
+def student_detail(store: EventStore, uid: int, *, scope: Scope, days: int = 180) -> dict[str, Any]:
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    rows = store.lesson_records(student_uid=uid, since=since)
-    names = {s["uid"]: s for s in store.students()}
-    exam_events = store.events("AnswerSheetScore", student_uid=uid, limit=100)
+    rows = store.lesson_records(scope=scope, student_uid=uid, since=since)
+    names = {s["uid"]: s for s in store.students(scope=scope)}
+    exam_events = store.events("AnswerSheetScore", scope=scope, student_uid=uid, limit=100)
     exams = []
     for ev in exam_events:
         data = (ev["payload"].get("Data") or {}) if isinstance(ev["payload"], dict) else {}
@@ -181,15 +182,15 @@ def student_detail(store: EventStore, uid: int, days: int = 180) -> dict[str, An
     }
 
 
-def teachers_summary(store: EventStore, days: int = 90) -> list[dict[str, Any]]:
+def teachers_summary(store: EventStore, *, scope: Scope, days: int = 90) -> list[dict[str, Any]]:
     """Per-teacher lesson log: distinct lessons, taught minutes, weekly trend.
 
     Teacher identity comes from Attendance rows (Identity==2) captured onto
     lesson_records; there is no ClassIn API that enumerates teachers.
     """
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    rows = store.lesson_records(since=since)
-    teacher_names = {t["uid"]: t.get("name") for t in store.teachers()}
+    rows = store.lesson_records(scope=scope, since=since)
+    teacher_names = {t["uid"]: t.get("name") for t in store.teachers(scope=scope)}
     by_teacher: dict[int, dict[str, dict]] = defaultdict(dict)  # uid -> lesson_id -> row
     for r in rows:
         uid = r.get("teacher_uid")
@@ -241,7 +242,9 @@ def teachers_summary(store: EventStore, days: int = 90) -> list[dict[str, Any]]:
     return out
 
 
-def missing_homework_rows(store: EventStore, window_hours: int = 48) -> list[dict[str, Any]]:
+def missing_homework_rows(
+    store: EventStore, *, scope: Scope, window_hours: int = 48
+) -> list[dict[str, Any]]:
     """Rows where homework is explicitly not submitted within the window.
 
     homework_submitted == 0 only exists after a sweep marks lesson rows whose
@@ -249,19 +252,19 @@ def missing_homework_rows(store: EventStore, window_hours: int = 48) -> list[dic
     as missing — same rule as the reference toolkit.
     """
     since = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).isoformat()
-    rows = store.lesson_records(since=since)
-    names = {s["uid"]: s for s in store.students()}
+    rows = store.lesson_records(scope=scope, since=since)
+    names = {s["uid"]: s for s in store.students(scope=scope)}
 
     # A lesson "has homework" if any record in it carries a homework activity
     # or any submit happened for it.
     lessons_with_hw = {
         r["lesson_id"]
-        for r in store.lesson_records()
+        for r in store.lesson_records(scope=scope)
         if r.get("homework_activity_id") is not None
     }
     lessons_with_hw |= {
         lesson["lesson_id"]
-        for lesson in store.lessons()
+        for lesson in store.lessons(scope=scope)
         if lesson.get("homework_activity_id") is not None
     }
 

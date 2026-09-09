@@ -3,9 +3,11 @@
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between">
   <h1>모아보기</h1>
+  {% if session.is_owner %}
   <form method="post" action="{{ url_for('dashboard_sync') }}">
     <button type="submit" class="secondary" style="margin-top:0">ClassIn에서 동기화</button>
   </form>
+  {% endif %}
 </div>
 {% if sync == 'ok' %}
 <div class="notice ok">ClassIn 조회 API에서 {{ sync_n }}건을 동기화했습니다.</div>

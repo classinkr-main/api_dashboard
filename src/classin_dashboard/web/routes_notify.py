@@ -35,8 +35,9 @@ def notify_home(
     if isinstance(session, RedirectResponse):
         return session
     window_hours = max(1, min(window_hours, 24 * 14))
-    rows = metrics.missing_homework_rows(state.events, window_hours=window_hours)
-    history = state.events.notification_history(limit=50)
+    scope = state.scope_of(session)
+    rows = metrics.missing_homework_rows(state.events, scope=scope, window_hours=window_hours)
+    history = state.events.notification_history(scope=scope, limit=50)
     return render(
         request,
         "notify.html",
@@ -63,7 +64,9 @@ def notify_compose(
     session = require_session(request)
     if isinstance(session, RedirectResponse):
         return session
-    rows = metrics.missing_homework_rows(state.events, window_hours=window_hours)
+    rows = metrics.missing_homework_rows(
+        state.events, scope=state.scope_of(session), window_hours=window_hours
+    )
     if not rows:
         return RedirectResponse(
             f"{request.url_for('notify_home')}?window_hours={window_hours}", status_code=303

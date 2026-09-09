@@ -1,12 +1,14 @@
-"""Session auth (ADR-0002).
+"""Session auth (ADR-0002, extended by ADR-0005).
 
-Two modes:
-- credential: user logs in with ClassIn SID/secret; we verify against the
-  ClassIn API and keep the secret server-side only.
-- fixed: SID/secret come from env; users log in with a shared access password
-  and pick a role (owner/teacher).
+Login paths, in the order the login form resolves them:
+- local account: username + password against the `users` table; the account
+  carries the role (owner/manager/teacher) and its branch/teacher scope.
+  ClassIn credentials come from the server (.env) or the branch override.
+- fixed: shared access password from env → owner (bootstrap entry point).
+- credential: ClassIn SID/secret typed at login and verified → owner.
 
-The browser only ever holds a signed session-id cookie.
+Roles are never chosen by the user. The browser only ever holds a signed
+session-id cookie; ClassIn secrets stay in the server-side session.
 """
 
 from __future__ import annotations
@@ -24,7 +26,12 @@ SESSION_COOKIE = "dash_session"
 class Session:
     sid: str
     secret: str
-    role: str  # "owner" | "teacher"
+    role: str  # "owner" | "manager" | "teacher"
+    user_id: int | None = None
+    username: str = ""
+    branch_id: int | None = None  # manager/teacher home branch
+    teacher_uid: int | None = None  # teacher identity in ClassIn
+    branch_filter: int | None = None  # owner's topbar 관 switch
     created_at: float = field(default_factory=time.time)
 
 
@@ -36,10 +43,28 @@ class SessionStore:
         self._serializer = URLSafeSerializer(cookie_secret, salt="dash-session")
         self._ttl = ttl_hours * 3600
 
-    def create(self, sid: str, secret: str, role: str) -> str:
+    def create(
+        self,
+        sid: str,
+        secret: str,
+        role: str,
+        *,
+        user_id: int | None = None,
+        username: str = "",
+        branch_id: int | None = None,
+        teacher_uid: int | None = None,
+    ) -> str:
         """Store a session and return the signed cookie value."""
         token = secrets.token_urlsafe(32)
-        self._sessions[token] = Session(sid=sid, secret=secret, role=role)
+        self._sessions[token] = Session(
+            sid=sid,
+            secret=secret,
+            role=role,
+            user_id=user_id,
+            username=username,
+            branch_id=branch_id,
+            teacher_uid=teacher_uid,
+        )
         return self._serializer.dumps(token)
 
     def resolve(self, cookie_value: str | None) -> Session | None:
@@ -65,3 +90,29 @@ class SessionStore:
         except BadSignature:
             return
         self._sessions.pop(token, None)
+
+
+class LoginThrottle:
+    """Tiny in-memory per-IP brake on password guessing (process-local)."""
+
+    def __init__(self, max_failures: int = 5, lockout_seconds: int = 60) -> None:
+        self._max = max_failures
+        self._lockout = lockout_seconds
+        self._failures: dict[str, tuple[int, float]] = {}
+
+    def locked_seconds(self, ip: str) -> int:
+        count, last = self._failures.get(ip, (0, 0.0))
+        if count < self._max:
+            return 0
+        remaining = self._lockout - (time.time() - last)
+        if remaining <= 0:
+            self._failures.pop(ip, None)
+            return 0
+        return int(remaining) + 1
+
+    def record_failure(self, ip: str) -> None:
+        count, _ = self._failures.get(ip, (0, 0.0))
+        self._failures[ip] = (count + 1, time.time())
+
+    def reset(self, ip: str) -> None:
+        self._failures.pop(ip, None)

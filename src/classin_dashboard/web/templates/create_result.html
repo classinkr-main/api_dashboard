@@ -2,6 +2,11 @@
 {% block title %}생성 결과 — ClassIn{% endblock %}
 {% block content %}
 <h1>생성 결과</h1>
+{% if notes %}
+<div class="notice info">
+  <ul style="margin:0;padding-left:18px">{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
 {% if created %}
 <div class="panel">
   <h2 style="margin-top:0">생성됨 ({{ created | length }})</h2>

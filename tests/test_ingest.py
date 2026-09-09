@@ -1,6 +1,7 @@
 import pytest
 
 from classin_dashboard.ingest import attendance_label, ingest
+from classin_dashboard.scope import Scope
 from classin_dashboard.store import EventStore
 
 CLASS_START = 1_700_000_000
@@ -128,7 +129,7 @@ def test_ingest_attendance_creates_lesson_records(store):
     cmd = ingest(store, attendance_payload())
     assert cmd == "Attendance"
 
-    rows = {r["student_uid"]: r for r in store.lesson_records()}
+    rows = {r["student_uid"]: r for r in store.lesson_records(scope=Scope.ALL)}
     assert set(rows) == {10001, 10002, 10003}
 
     assert rows[10001]["attendance"] == "출석"
@@ -143,14 +144,14 @@ def test_ingest_attendance_creates_lesson_records(store):
 
 def test_ingest_attendance_registers_teacher_in_teachers_table(store):
     ingest(store, attendance_payload())
-    teachers = {t["uid"]: t for t in store.teachers()}
+    teachers = {t["uid"]: t for t in store.teachers(scope=Scope.ALL)}
     assert 90001 in teachers
     assert teachers[90001]["name"] == "Ms. Kim"
 
 
 def test_ingest_attendance_registers_students(store):
     ingest(store, attendance_payload())
-    students = {s["uid"]: s for s in store.students()}
+    students = {s["uid"]: s for s in store.students(scope=Scope.ALL)}
     assert students[10001]["name"] == "Alice"
     assert students[10002]["name"] == "Bob"
     assert students[10003]["name"] == "Cara"
@@ -160,7 +161,7 @@ def test_ingest_attendance_registers_students(store):
 
 def test_ingest_attendance_does_not_create_row_for_teacher(store):
     ingest(store, attendance_payload())
-    rows = store.lesson_records()
+    rows = store.lesson_records(scope=Scope.ALL)
     assert all(r["student_uid"] != 90001 for r in rows)
 
 
@@ -170,7 +171,7 @@ def test_ingest_attendance_does_not_create_row_for_teacher(store):
 def test_ingest_end_patches_camera_hand_trophy(store):
     ingest(store, attendance_payload())
     ingest(store, end_payload())
-    rows = {r["student_uid"]: r for r in store.lesson_records()}
+    rows = {r["student_uid"]: r for r in store.lesson_records(scope=Scope.ALL)}
     r = rows[10001]
     assert r["camera_minutes"] == 60.0
     assert r["hand_raise"] == 5.0
@@ -185,7 +186,7 @@ def test_ingest_end_patches_camera_hand_trophy(store):
 def test_ingest_homework_submit_sets_submitted_flag(store):
     ingest(store, attendance_payload())
     ingest(store, homework_submit_payload())
-    rows = {r["student_uid"]: r for r in store.lesson_records()}
+    rows = {r["student_uid"]: r for r in store.lesson_records(scope=Scope.ALL)}
     assert rows[10001]["homework_submitted"] == 1
     assert rows[10001]["homework_activity_id"] == 777
     assert rows[10001]["homework_late"] == 0
@@ -196,14 +197,14 @@ def test_ingest_homework_submit_late_flag(store):
     payload["Data"]["IsSubmitLate"] = 1
     ingest(store, attendance_payload())
     ingest(store, payload)
-    rows = {r["student_uid"]: r for r in store.lesson_records()}
+    rows = {r["student_uid"]: r for r in store.lesson_records(scope=Scope.ALL)}
     assert rows[10001]["homework_late"] == 1
 
 
 def test_ingest_homework_submit_other_students_unaffected(store):
     ingest(store, attendance_payload())
     ingest(store, homework_submit_payload())
-    rows = {r["student_uid"]: r for r in store.lesson_records()}
+    rows = {r["student_uid"]: r for r in store.lesson_records(scope=Scope.ALL)}
     assert rows[10002]["homework_submitted"] is None
 
 
@@ -214,7 +215,7 @@ def test_ingest_duplicate_msg_id_is_ignored(store):
     payload = attendance_payload(msg_id="dup-1")
     ingest(store, payload)
     ingest(store, payload)  # same payload, same _id
-    events = store.events()
+    events = store.events(scope=Scope.ALL)
     assert len(events) == 1
 
 
@@ -223,7 +224,7 @@ def test_ingest_duplicate_does_not_double_apply_effects(store):
     ingest(store, attendance_payload())
     ingest(store, payload)
     ingest(store, payload)  # duplicate End event
-    rows = {r["student_uid"]: r for r in store.lesson_records()}
+    rows = {r["student_uid"]: r for r in store.lesson_records(scope=Scope.ALL)}
     # hand_raise should be exactly the single value applied once, not summed
     assert rows[10001]["hand_raise"] == 5.0
 
@@ -236,5 +237,5 @@ def test_ingest_events_without_id_are_all_stored(store):
     del p2["_id"]
     ingest(store, p1)
     ingest(store, p2)
-    events = store.events()
+    events = store.events(scope=Scope.ALL)
     assert len(events) == 2

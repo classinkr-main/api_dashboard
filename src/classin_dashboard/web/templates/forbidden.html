@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}권한 없음 — ClassIn{% endblock %}
+{% block content %}
+<div class="panel" style="max-width: 520px; margin: 60px auto;">
+  <h1>접근 권한이 없습니다</h1>
+  <div class="notice error">{{ message or '이 화면을 볼 권한이 없습니다.' }}</div>
+  <p><a class="btn" href="{{ url_for('dashboard_home') }}">대시보드로</a></p>
+</div>
+{% endblock %}

@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from classin_dashboard.config import Settings
+from classin_dashboard.scope import Scope
 from classin_dashboard.web.app import create_app
 
 
@@ -66,6 +67,53 @@ def test_logout_clears_session(client):
     assert "/login" in after_logout.headers["location"]
 
 
+def test_login_throttles_after_five_failures(client):
+    for _ in range(5):
+        assert "올바르지 않습니다" in client.post("/login", data={"password": "wrong"}).text
+    blocked = client.post("/login", data={"password": "pw"})
+    assert blocked.status_code == 200
+    assert "로그인 시도가 많습니다" in blocked.text  # even the right password waits
+
+
+def test_login_with_local_account_sets_role_and_scope(client, app):
+    app.state.dash.events.create_user("kim", "pw1234", "teacher", teacher_uid=20001)
+    resp = client.post("/login", data={"username": "kim", "password": "pw1234"})
+    assert resp.status_code == 303
+
+    dash = client.get("/dashboard")
+    assert dash.status_code == 200
+    assert ">관리</a>" not in dash.text  # 관리 tab is owner/manager only
+    assert client.get("/admin").status_code == 403
+
+
+def test_login_unknown_user_gives_a_generic_error(client):
+    resp = client.post("/login", data={"username": "nobody", "password": "x"})
+    assert resp.status_code == 200
+    assert "아이디 또는 비밀번호가 올바르지 않습니다." in resp.text
+
+
+def test_teacher_view_redirects_to_own_uid(client, app):
+    app.state.dash.events.create_user("kim", "pw1234", "teacher", teacher_uid=20001)
+    client.post("/login", data={"username": "kim", "password": "pw1234"})
+
+    resp = client.get("/teachers?uid=99999")
+    assert resp.status_code == 303
+    assert "uid=20001" in resp.headers["location"]
+
+
+def test_owner_branch_switch_narrows_the_session(client, app):
+    store = app.state.dash.events
+    branch_id = store.upsert_branch("본관")
+    client.post("/login", data={"password": "pw"})
+
+    assert client.post("/scope/branch", data={"branch_id": str(branch_id)}).status_code == 303
+    dash = client.get("/dashboard")
+    assert f'value="{branch_id}" selected' in dash.text
+
+    client.post("/scope/branch", data={"branch_id": ""})
+    assert f'value="{branch_id}" selected' not in client.get("/dashboard").text
+
+
 def test_login_fixed_mode_missing_server_credentials_errors(tmp_path):
     app = create_app(make_settings(tmp_path, classin_sid="", classin_secret=""))
     c = TestClient(app, follow_redirects=False)
@@ -84,7 +132,7 @@ def test_webhook_always_acks_valid_json(client, app):
     )
     assert resp.status_code == 200
     assert resp.json() == {"error_info": {"errno": 1, "error": "程序正常执行"}}
-    events = app.state.dash.events.events()
+    events = app.state.dash.events.events(scope=Scope.ALL)
     assert len(events) == 1
     assert events[0]["cmd"] == "Attendance"
 
@@ -97,7 +145,7 @@ def test_webhook_acks_non_json_body_without_ingesting(client, app):
     )
     assert resp.status_code == 200
     assert resp.json() == {"error_info": {"errno": 1, "error": "程序正常执行"}}
-    assert app.state.dash.events.events() == []
+    assert app.state.dash.events.events(scope=Scope.ALL) == []
 
 
 def test_webhook_safekey_mismatch_acks_but_skips_ingest(tmp_path):
@@ -119,7 +167,7 @@ def test_webhook_safekey_mismatch_acks_but_skips_ingest(tmp_path):
     assert resp.status_code == 200
     assert resp.json() == {"error_info": {"errno": 1, "error": "程序正常执行"}}
     # raw payload preserved, but not turned into a normalized event row
-    assert app.state.dash.events.events() == []
+    assert app.state.dash.events.events(scope=Scope.ALL) == []
 
 
 def test_webhook_safekey_match_ingests(tmp_path):
@@ -144,7 +192,7 @@ def test_webhook_safekey_match_ingests(tmp_path):
         },
     )
     assert resp.status_code == 200
-    events = app.state.dash.events.events()
+    events = app.state.dash.events.events(scope=Scope.ALL)
     assert len(events) == 1
     assert events[0]["cmd"] == "Attendance"
 
@@ -207,7 +255,9 @@ def test_create_parse_resolves_teacher_without_a_mapping(logged_in, app):
     )
     assert resp.status_code == 200
     assert "UID 20001" in resp.text
-    assert "<select" not in resp.text  # nothing left to ask about
+    # nothing left to ask about: no teacher picker in the preview form
+    assert "— 선택 —" not in resp.text
+    assert 'name="teacher_uid_manual_0"' not in resp.text
 
 
 def test_create_execute_uses_override_and_reuses_existing_course(logged_in, app, monkeypatch):
@@ -236,7 +286,7 @@ def test_create_execute_uses_override_and_reuses_existing_course(logged_in, app,
         for name, kwargs in FakeActions.calls
         if name == "create_classroom"
     )
-    assert app.state.dash.events.lessons(course_id=777)
+    assert app.state.dash.events.lessons(scope=Scope.ALL, course_id=777)
 
 
 def test_create_execute_reports_unresolved_teacher(logged_in, app, monkeypatch):
@@ -258,3 +308,69 @@ def test_health_endpoint(client):
     resp = client.get("/health")
     assert resp.status_code == 200
     assert resp.json() == {"ok": True, "app": "classin-dashboard"}
+
+
+def test_create_execute_forces_the_teachers_own_uid(client, app, monkeypatch):
+    from classin_dashboard.web import routes_create
+
+    FakeActions.calls = []
+    monkeypatch.setattr(routes_create, "ClassInActions", FakeActions)
+    store = app.state.dash.events
+    store.upsert_teacher(20001, "김선생")
+    store.create_user("kim", "pw1234", "teacher", teacher_uid=20001)
+    client.post("/login", data={"username": "kim", "password": "pw1234"})
+
+    preview = client.post(
+        "/create/parse",
+        data={"schedule_text": "고2 수학 A반 화/목 19:00-21:00 5월 첫째 주부터 1주"},
+    )
+    resp = client.post(
+        "/create/execute",
+        data={"plan_json": _plan_json(preview.text), "teacher_uid_manual_0": "20007"},
+    )
+    assert resp.status_code == 200
+    assert "본인 계정으로 배정" in resp.text
+    used = {kw["teacher_uid"] for _, kw in FakeActions.calls if "teacher_uid" in kw}
+    assert used == {20001}
+
+
+def test_manager_cannot_create_for_another_branchs_teacher(client, app, monkeypatch):
+    from classin_dashboard.web import routes_create
+
+    FakeActions.calls = []
+    monkeypatch.setattr(routes_create, "ClassInActions", FakeActions)
+    store = app.state.dash.events
+    main, annex = store.upsert_branch("본관"), store.upsert_branch("분관")
+    store.upsert_teacher(20001, "김선생")
+    store.set_teacher_branch(20001, annex)
+    store.create_user("mgr", "pw1234", "manager", branch_id=main)
+    client.post("/login", data={"username": "mgr", "password": "pw1234"})
+
+    preview = client.post(
+        "/create/parse",
+        data={"schedule_text": "고2 수학 A반 화/목 19:00-21:00 5월 첫째 주부터 1주"},
+    )
+    resp = client.post(
+        "/create/execute",
+        data={"plan_json": _plan_json(preview.text), "teacher_uid_manual_0": "20001"},
+    )
+    assert resp.status_code == 200
+    assert "관장 소속 관의 선생님이 아닙니다" in resp.text
+    assert FakeActions.calls == []
+
+
+def test_dashboard_sync_is_owner_only(client, app):
+    app.state.dash.events.create_user("kim", "pw1234", "teacher", teacher_uid=20001)
+    client.post("/login", data={"username": "kim", "password": "pw1234"})
+    assert client.post("/dashboard/sync").status_code == 403
+
+
+def test_teacher_cannot_open_another_branchs_course_or_student(client, app):
+    store = app.state.dash.events
+    store.upsert_teacher(20001, "김선생")
+    store.upsert_course(500, name="남의 코스", teacher_uid=30001)
+    store.create_user("kim", "pw1234", "teacher", teacher_uid=20001)
+    client.post("/login", data={"username": "kim", "password": "pw1234"})
+
+    assert client.get("/dashboard/course/500").status_code == 403
+    assert client.get("/students?uid=98765").status_code == 403

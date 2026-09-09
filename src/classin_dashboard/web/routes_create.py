@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from ..classin.actions import ACTIVITY_HOMEWORK, ClassInActions
 from ..classin.client import ClassInError
 from ..intelligence.schedule_parser import SOURCE_LABELS, ParsePlan, smart_parse
-from .app import AppState, get_state, require_session, render
+from .app import AppState, get_state, render, require_session
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,7 +28,7 @@ def create_home(request: Request, state: AppState = Depends(get_state)):
         "create.html",
         {
             "ai_available": bool(state.settings.anthropic_api_key),
-            "teacher_count": len(state.events.teachers()),
+            "teacher_count": len(state.events.teachers(scope=state.scope_of(session))),
         },
         session=session,
         nav="create",
@@ -44,8 +44,9 @@ def create_parse(
     session = require_session(request)
     if isinstance(session, RedirectResponse):
         return session
+    scope = state.scope_of(session)
     try:
-        plan = smart_parse(state.settings, state.events, schedule_text)
+        plan = smart_parse(state.settings, state.events, schedule_text, scope=scope)
     except Exception as exc:
         log.exception("schedule parse failed")
         return render(
@@ -53,7 +54,7 @@ def create_parse(
             "create.html",
             {
                 "ai_available": bool(state.settings.anthropic_api_key),
-                "teacher_count": len(state.events.teachers()),
+                "teacher_count": len(state.events.teachers(scope=scope)),
                 "error": f"스케줄 파싱 실패: {exc}",
                 "schedule_text": schedule_text,
             },
@@ -66,7 +67,7 @@ def create_parse(
         {
             "plan": plan,
             "source_label": SOURCE_LABELS.get(plan.source_format, plan.source_format),
-            "all_teachers": state.events.teachers(),
+            "all_teachers": state.events.teachers(scope=scope),
             "plan_json": json.dumps(plan.model_dump(mode="json"), ensure_ascii=False),
         },
         session=session,
@@ -82,12 +83,16 @@ async def create_execute(request: Request, state: AppState = Depends(get_state))
     form = await request.form()
     plan = ParsePlan.model_validate(json.loads(str(form.get("plan_json") or "{}")))
     _apply_teacher_overrides(plan, form)
+    notes = _enforce_teacher_scope(plan, session, state)
 
     created: list[str] = []
     errors: list[str] = []
     with state.client_for(session) as client:
         actions = ClassInActions(client)
         for course in plan.courses:
+            if course.blocked_reason:
+                errors.append(course.blocked_reason)
+                continue
             if not course.teacher_uid:
                 errors.append(
                     f"{course.course_name}: 선생님을 확정하지 못했습니다"
@@ -187,10 +192,40 @@ async def create_execute(request: Request, state: AppState = Depends(get_state))
     return render(
         request,
         "create_result.html",
-        {"created": created, "errors": errors},
+        {"created": created, "errors": errors, "notes": notes},
         session=session,
         nav="create",
     )
+
+
+def _enforce_teacher_scope(plan: ParsePlan, session, state: AppState) -> list[str]:
+    """teacher: everything is created under the session's own uid.
+
+    manager: the chosen teacher must belong to the manager's 관.
+    owner: unrestricted.
+    """
+    notes: list[str] = []
+    if session.role == "teacher":
+        for course in plan.courses:
+            if session.teacher_uid is None:
+                course.blocked_reason = (
+                    f"{course.course_name}: 계정에 ClassIn 선생님 UID가 연결되어 있지 않습니다"
+                    " — 관리자에게 문의하세요."
+                )
+                continue
+            if course.teacher_uid != session.teacher_uid:
+                course.teacher_uid = session.teacher_uid
+                notes.append(f"「{course.course_name}」 선생님은 본인 계정으로 배정")
+        return notes
+    if session.role == "manager":
+        allowed = state.events.teacher_uids_in_scope(state.scope_of(session)) or set()
+        for course in plan.courses:
+            if course.teacher_uid and course.teacher_uid not in allowed:
+                course.blocked_reason = (
+                    f"{course.course_name}: 선생님(UID {course.teacher_uid})이"
+                    " 관장 소속 관의 선생님이 아닙니다."
+                )
+    return notes
 
 
 def _apply_teacher_overrides(plan: ParsePlan, form) -> None:

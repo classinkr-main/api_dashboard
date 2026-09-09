@@ -34,6 +34,8 @@ header.topbar {
   background: var(--accent-soft); color: var(--accent); text-decoration: none;
 }
 .topbar .who { color: var(--muted); font-size: 13px; }
+.topbar .scope-switch { margin: 0; }
+.topbar .scope-switch select { width: auto; padding: 4px 8px; font-size: 13px; }
 
 main { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
 h1 { font-size: 20px; margin: 0 0 16px; }
@@ -101,8 +103,21 @@ button:hover { filter: brightness(1.05); }
     <a href="{{ url_for('teachers_view') }}" class="{{ 'active' if nav == 'teachers' }}">선생님별</a>
     <a href="{{ url_for('create_home') }}" class="{{ 'active' if nav == 'create' }}">생성</a>
     <a href="{{ url_for('notify_home') }}" class="{{ 'active' if nav == 'notify' }}">알림</a>
+    {% if session.is_admin %}
+    <a href="{{ url_for('admin_home') }}" class="{{ 'active' if nav == 'admin' }}">관리</a>
+    {% endif %}
   </nav>
-  <span class="who">{{ session.role_label }} · SID {{ session.sid }}</span>
+  {% if session.is_owner %}
+  <form method="post" action="{{ url_for('set_branch_scope') }}" class="scope-switch">
+    <select name="branch_id" onchange="this.form.submit()" aria-label="관 선택">
+      <option value="">전체</option>
+      {% for b in session.branches %}
+      <option value="{{ b.id }}" {{ 'selected' if session.branch_filter == b.id }}>{{ b.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+  <span class="who">{{ session.scope_label }}{% if session.username %} · {{ session.username }}{% endif %}</span>
   <a href="{{ url_for('logout') }}">로그아웃</a>
 </header>
 {% endif %}
