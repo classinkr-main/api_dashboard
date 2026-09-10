@@ -66,6 +66,7 @@ def dashboard_home(
             "lessons_by_course": lessons_by_course,
             "sync": sync,
             "sync_n": n,
+            "webhook_url": state.settings.webhook_public_url,
             "attendance_chart": line_chart(
                 [
                     {**p, "pct": (p["attendance_rate"] or 0) * 100}

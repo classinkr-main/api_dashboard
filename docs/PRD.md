@@ -77,7 +77,7 @@ ClassIn(EEO) 파트너 API 위에 올리는 **학원 운영 웹 대시보드**.
 - FR-C3: 숙제 미제출 학생 조회(웹훅 축적 데이터 기반) + 단체 알림: ClassIn 메시지 API 지원 시 직접 발송, 미지원 시 문구 생성 + 수동 발송 안내.
 
 ### 4.4 웹훅 (Data Sub)
-- FR-W1: `POST /dash/webhook/classin` 수신, SafeKey 검증, 원본 페이로드 저장(JSONL).
+- FR-W1: `POST /classin-api/webhook` 수신 (공개 주소 `webhook.classin.cloud`), SafeKey 검증, 원본 페이로드 저장(JSONL).
 - FR-W2: Cmd별 파서(출결, 과제, 수업 종료 등) — 파싱 실패 시에도 원본 보존.
 - FR-W3: 축적 이벤트를 대시보드 지표로 집계.
 
@@ -120,7 +120,7 @@ ClassIn(EEO) 파트너 API 위에 올리는 **학원 운영 웹 대시보드**.
 1. 조회 API 활성화: getCourseList, getCourseClass, getCourseInfo, getCourseStudent, getUserCourseList, getClassMemberTime(Details), getStudentList, getTeacherList — 파라미터/응답/페이지네이션 문서 포함
 2. AI 강의분석 결과 API 제공 여부
 3. 아웃바운드 메시지(IM/알림) API 제공 여부
-4. Data Sub 등록: 엔드포인트 `https://api.classin.co.kr/dash/webhook/classin`, 구독 Cmd(Attendance, End, HomeworkSubmit, HomeworkScore, AnswerSheetScore, Rating, ExamScore), 오류 알림 이메일
+4. Data Sub 등록: 엔드포인트 `https://webhook.classin.cloud/classin-api/webhook` (SID 87372676), 구독 Cmd(Attendance, End, HomeworkSubmit, HomeworkScore, AnswerSheetScore, Rating, ExamScore), 오류 알림 이메일
 
 ## 8. 마일스톤
 1. M1: 스캐폴드 + 로그인 + ClassIn 클라이언트 + 코스/수업 조회 대시보드

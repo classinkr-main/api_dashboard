@@ -61,17 +61,20 @@ classin-dash
 
 **요청 시 전달할 정보**
 
-- **엔드포인트 URL**: `https://api.classin.co.kr/dash/webhook/classin`
+- **엔드포인트 URL**: `https://webhook.classin.cloud/classin-api/webhook`
+- **기관 SID**: `87372676`
 - **구독할 Cmd 목록**:
   - `Attendance` (출결)
   - `End` (수업 종료)
   - `HomeworkSubmit` (과제 제출)
   - `HomeworkScore` (과제 채점)
-  - `AnswerSheetScore` (답안지 채점)
-  - `Rating` (AI 강의 평가)
-  - `ExamScore` (시험 점수)
-- **SID**: 대상 파트너 계정의 SID
-- **오류 알림 이메일**: 웹훅 전송 실패 시 통지받을 이메일 주소 (운영 담당자 메일)
+  - `AnswerSheetScore` (답안지/OMR 채점)
+  - `ExamScore` (시험 채점)
+  - `Record` (수업 녹화 링크)
+  - `Rating` (교사↔학생 상호 평가 — 선택)
+- **오류 알림 이메일**: `junhyuk.mun@classin.com` (전송 실패 시 시간당 1회 통지)
+
+보낼 신청서 본문과 발송 전 자체 점검 절차는 [`16_datasub_registration.md`](16_datasub_registration.md) 에 있다.
 
 등록 완료 후 ClassIn 측에서 SafeKey를 발급/확인해 주면 `.env`의 `DASH_WEBHOOK_SAFEKEY`에 반영하고 컨테이너를 재시작한다.
 
@@ -122,5 +125,7 @@ docker compose logs --since 1h dash
 | ClassIn API 응답 `errno` 코드 반환 (0이 아님) | 해당 SID에 API 미활성화 또는 SID/secret 오류. ClassIn 지원팀에 API 활성화 여부 확인, `.env`의 `DASH_CLASSIN_SID`/`DASH_CLASSIN_SECRET` 재확인. |
 | `errno 101002005` | 서명 오류 — 대부분 **서버 시계 오차**(±5분 초과)가 원인. `timedatectl status`로 NTP 동기화 확인(14.5절), 그다음 SID/secret 값 재확인. |
 | 조회 API가 특정 SID에서 계속 비어있거나 미활성 상태 | ClassIn 파트너 API는 SID별로 활성화가 필요하다. 조회 API가 아직 활성화되지 않은 경우에도 **대시보드는 완전히 멈추지 않는다** — 웹훅(Data Sub)으로 수신·축적된 데이터만으로 동작하며, 실시간 조회가 필요한 항목은 "수집 대기"로 표시된다. API가 활성화되면 자동으로 실시간 조회 데이터가 병합된다. |
-| 웹훅이 전혀 안 들어옴 | (1) nginx에서 `/dash/webhook/classin`이 인증/차단 없이 통과하는지 확인(`deploy/nginx.conf.example`), (2) ClassIn 지원팀에 등록된 엔드포인트 URL·SID가 정확한지 확인, (3) `data/webhook/`에 파일 자체가 생성되는지 확인해 프록시 문제인지 앱 문제인지 구분. |
+| 웹훅이 전혀 안 들어옴 | (1) nginx에서 `webhook.classin.cloud/classin-api/webhook`가 인증/차단 없이 통과하는지 확인(`deploy/nginx.conf.example`), (2) ClassIn 지원팀에 등록된 엔드포인트 URL·SID가 정확한지 확인, (3) `data/webhook/`에 파일 자체가 생성되는지 확인해 프록시 문제인지 앱 문제인지 구분. |
 | 로그인 후 바로 세션이 풀림 | `DASH_SECRET_KEY`가 재배포마다 바뀌면 기존 세션 쿠키가 무효화된다. `.env`에 고정값으로 저장했는지 확인. `DASH_COOKIE_SECURE=true`인데 HTTP로 접근하면 쿠키가 저장되지 않으니 HTTPS 경로로 접근했는지도 확인. |
+
+신청서 본문·자체 점검 절차는 [`16_datasub_registration.md`](16_datasub_registration.md) 참고.

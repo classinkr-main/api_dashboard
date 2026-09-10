@@ -20,7 +20,7 @@ def main() -> None:
         body = Path(path).read_bytes()
         json.loads(body)  # validate before sending
         req = Request(
-            f"{base}/webhook/classin", data=body,
+            f"{base}/classin-api/webhook", data=body,
             headers={"Content-Type": "application/json"}, method="POST",
         )
         with urlopen(req) as resp:

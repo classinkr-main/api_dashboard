@@ -6,7 +6,7 @@
 
 | # | 항목 | 상태 | 비고 |
 |---|---|---|---|
-| 1-1 | **Data Sub 웹훅 등록** | 요청 필요 | 엔드포인트 `https://api.classin.co.kr/dash/webhook/classin`, 구독 Cmd(Attendance, End, HomeworkSubmit, HomeworkScore, AnswerSheetScore, Rating, ExamScore), SID, 오류 알림 이메일. 등록 후 ClassIn이 `Test` Cmd로 검증 푸시 |
+| 1-1 | **Data Sub 웹훅 등록** | 신청서 준비 완료 | SID `87372676`, 엔드포인트 `https://webhook.classin.cloud/classin-api/webhook`, Cmd 7종(+Rating 선택). 발송 전 자체 점검·본문은 [`16_datasub_registration.md`](16_datasub_registration.md) |
 | 1-2 | **조회 API(get*) 활성화** | 요청 필요 | getCourseList/getCourseClass/getCourseStudent/getStudentList/getTeacherList/getClassMemberTime(Details). 활성화되면 → 실응답 스키마로 `reads.py` 파서 보정 + 페이지네이션 구현(현재 page=1 고정) |
 | 1-3 | 催交(숙제 재촉) API 개방 문의 | 문의 | 관리자 화면엔 있으나 API 미개방(확정). 열리면 `/notify`에서 원클릭 리마인드 |
 | 1-4 | AI 강의분석 결과 API 문의 | 문의 | 미제공 확정. 열리면 선생님 화면에 config 주입식 연결(ADR-0004 시임 준비됨) |

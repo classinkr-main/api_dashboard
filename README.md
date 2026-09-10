@@ -62,7 +62,7 @@ docker compose up -d --build
 | `/create` | 생성 — 스케줄 자동 파싱(표 / Claude / 규칙 기반) + 선생님·코스 자동 배정 → 코스/수업 일괄 생성 |
 | `/notify` | 알림 — 숙제 미제출 학생 조회, 알림 문구 생성/발송 |
 | `/admin` | 관리 (원장 전용, 관장은 축소 화면) — 관(지점) CRUD, 코스·선생님 → 관 배정, 계정 생성/비활성/비밀번호 재설정 |
-| `/webhook/classin` | ClassIn Data Sub 웹훅 수신 엔드포인트 (인증: SafeKey, 사람이 쓰는 화면 아님) |
+| `/classin-api/webhook` | ClassIn Data Sub 웹훅 수신 (공개 주소 `https://webhook.classin.cloud/classin-api/webhook`, 인증: SafeKey, 사람이 쓰는 화면 아님). 구버전 `/webhook/classin` 도 동작 |
 
 경로는 모두 `DASH_ROOT_PATH`(기본 `/dash`) 뒤에 붙는다 — 예: `https://api.classin.co.kr/dash/dashboard`.
 

@@ -125,6 +125,40 @@ def test_login_fixed_mode_missing_server_credentials_errors(tmp_path):
 # -- webhook ---------------------------------------------------------------
 
 
+def test_webhook_canonical_path_acks_and_ingests(client, app):
+    """The path registered with ClassIn: webhook.classin.cloud/classin-api/webhook."""
+    resp = client.post(
+        "/classin-api/webhook",
+        json={"_id": "c1", "Cmd": "HomeworkSubmit", "ClassID": 1, "CourseID": 2,
+              "Data": {"ActivityId": 7, "StudentInfo": {"StudentUid": 11}}},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"error_info": {"errno": 1, "error": "程序正常执行"}}
+    events = app.state.dash.events.events(scope=Scope.ALL)
+    assert [e["cmd"] for e in events] == ["HomeworkSubmit"]
+
+
+def test_webhook_canonical_path_under_dash_root_path(tmp_path):
+    """root_path=/dash must not shadow the webhook host's own path."""
+    settings = make_settings(tmp_path)
+    settings.root_path = "/dash"
+    app = create_app(settings)
+    client = TestClient(app, root_path="/dash", follow_redirects=False)
+
+    resp = client.post("/classin-api/webhook", json={"_id": "c2", "Cmd": "Test"})
+    assert resp.status_code == 200
+    assert resp.json() == {"error_info": {"errno": 1, "error": "程序正常执行"}}
+    assert [e["cmd"] for e in app.state.dash.events.events(scope=Scope.ALL)] == ["Test"]
+
+
+def test_webhook_registration_test_cmd_is_stored(client, app):
+    """ClassIn pushes Cmd=Test to verify the endpoint during registration."""
+    resp = client.post("/classin-api/webhook", json={"_id": "t1", "Cmd": "Test", "SID": 87372676})
+    assert resp.json()["error_info"]["errno"] == 1
+    assert [e["cmd"] for e in app.state.dash.events.events(scope=Scope.ALL)] == ["Test"]
+
+
+
 def test_webhook_always_acks_valid_json(client, app):
     resp = client.post(
         "/webhook/classin",

@@ -1,5 +1,12 @@
 """ClassIn Data Sub receiver.
 
+Canonical public URL: https://webhook.classin.cloud/classin-api/webhook
+(the path registered with ClassIn support; one endpoint per SID). The path is
+served as-is, independent of the dashboard's /dash root_path, so the webhook
+host proxies straight through without stripping a prefix. The older
+/webhook/classin path stays mounted as an alias so an already-registered
+endpoint keeps working.
+
 ClassIn's push queue is strict FIFO with head-of-line blocking: an
 unacknowledged message is retried every 10s forever and blocks every later
 event. So this endpoint ALWAYS returns the required success envelope
@@ -24,8 +31,12 @@ router = APIRouter()
 
 ACK = {"error_info": {"errno": 1, "error": "程序正常执行"}}
 
+WEBHOOK_PATH = "/classin-api/webhook"
+LEGACY_WEBHOOK_PATH = "/webhook/classin"
 
-@router.post("/webhook/classin", name="classin_webhook")
+
+@router.post(WEBHOOK_PATH, name="classin_webhook")
+@router.post(LEGACY_WEBHOOK_PATH, name="classin_webhook_legacy")
 async def classin_webhook(request: Request, state: AppState = Depends(get_state)) -> dict:
     body = await request.body()
     try:

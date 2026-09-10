@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     classin_secret: str = ""
     classin_base_url: str = "https://api.eeo.cn"
     webhook_safekey: str = ""
+    # Public URL registered with ClassIn support (one endpoint per SID).
+    # Shown in the dashboard so operators can copy the exact registered value.
+    webhook_public_url: str = "https://webhook.classin.cloud/classin-api/webhook"
 
     # Claude (schedule parsing, notification copy)
     anthropic_api_key: str = ""
