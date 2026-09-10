@@ -14,6 +14,13 @@
 
 ## 2. 배포/운영 체크리스트 (코드는 준비됨, 실행 필요)
 
+> **선행 조건 (2026-09-10 확인)**: 앱을 돌릴 서버가 아직 없다. `api.classin.co.kr` 은 DNS 미등록,
+> `classin.co.kr`/`classin.cloud` 는 Vercel(서버리스라 이 앱 호스팅 불가),
+> `webhook.classin.cloud` 는 Cloudflare 프록시 뒤. 상세는 [`16_datasub_registration.md`](16_datasub_registration.md) §4-0.
+
+- [ ] **서버 확보** (도커 실행 가능한 VM) + Cloudflare 에 `webhook.classin.cloud` A 레코드 → 서버 IP
+- [ ] 웹훅 경로 Cloudflare 설정: 회색 구름(권장) 또는 주황 구름 + WAF Skip + Full(strict)
+- [ ] 대시보드 호스트 이름 확정 (`api.classin.co.kr` 신규 등록 또는 `dash.classin.cloud`)
 - [ ] 서버에 `.env` 작성(`openssl rand -hex 32`로 DASH_SECRET_KEY), `docker compose up -d`
 - [ ] nginx에 `deploy/nginx.conf.example` 적용 — `/dash/` 프리픽스 스트립 + HTTPS
 - [ ] 서버 NTP 동기화 확인 (v2 서명 ±5분 허용)

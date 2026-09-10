@@ -121,6 +121,38 @@ ClassIn API 연동을 진행 중이며, 학생별 채점/제출 데이터와 출
 문준혁 드림 (클래스인 코리아)
 ```
 
+## 4-0. 현재 호스팅 상태 (2026-09-10 확인)
+
+DNS 조회로 확인한 현재 상태. **HTTP 응답 자체는 확인하지 못했다** (개발 샌드박스에서
+해당 호스트로의 아웃바운드가 정책상 차단됨). 아래는 DNS 레코드만 근거로 한 것이다.
+
+| 호스트 | DNS | 가리키는 곳 |
+|---|---|---|
+| `webhook.classin.cloud` | 있음 | Cloudflare 프록시 (104.21.88.162, 172.67.186.9, 2606:4700:…) |
+| `classin.co.kr`, `classin.cloud` | 있음 | Vercel (216.198.79.1, 64.29.17.1) |
+| `api.classin.co.kr` | **없음** | — |
+| `dash.classin.co.kr` | 없음 | — |
+
+세 가지 결론:
+
+1. **Vercel 에는 이 앱을 올릴 수 없다.** 서버리스라 파일시스템이 휘발성인데, 이 앱은
+   SQLite(`dashboard.db`)와 원본 JSONL 을 볼륨에 계속 쌓는 상시 프로세스다.
+   `classin.co.kr` 홈페이지가 Vercel 에 있는 것은 그대로 두고 웹훅만 분리한다.
+2. **웹훅 호스트는 Cloudflare 뒤에 있다.** 레코드는 살아 있으나 origin 이 어디로 잡혀
+   있는지는 Cloudflare 대시보드에서만 보인다. 앱을 올릴 서버 IP 로 A 레코드를 잡아야 한다.
+3. **대시보드 주소(`api.classin.co.kr`)는 아직 DNS 자체가 없다.** 새로 파거나,
+   이미 Cloudflare 를 쓰는 `dash.classin.cloud` 같은 이름으로 가는 편이 간단하다.
+
+### Cloudflare 프록시(주황 구름) 주의
+
+웹훅 경로를 주황 구름 뒤에 두면 **Bot Fight Mode / WAF 기본 규칙이 ClassIn 의 푸시를
+막을 위험이 크다.** ClassIn 서버는 브라우저가 아닌 자동 POST 를 보내고, 한 번 막히면
+10초 간격 무한 재시도 + FIFO 블로킹으로 **이벤트 스트림 전체가 정지한다.**
+
+- **권장: 회색 구름(DNS only)** — 서버에서 Let's Encrypt 로 직접 인증서. 변수가 가장 적다.
+- 주황 구름을 유지한다면: `/classin-api/webhook` 경로에 **WAF Skip 규칙**을 반드시 추가하고,
+  SSL/TLS 모드를 **Full (strict)** 로 둔다.
+
 ## 4. 보내기 전 자체 점검
 
 신청 메일을 보내기 **전에** 아래를 모두 통과시켜야 한다. ClassIn 이 등록
